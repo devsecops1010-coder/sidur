@@ -376,7 +376,11 @@ function initCloud(){
     hideGate();setCloudBadge(true);
     const d=snap.data();if(!d||!d.s){firstSnap=false;return}
     LAST_CLOUD=d.s;
-    if(!firstSnap&&(d.t||0)<=(S._t||0))return;   // own echo / older; first load always takes the cloud
+    if(firstSnap&&CAN_EDIT&&(S._t||0)>(d.t||0)){  // this device has a newer, never-sent change → send it, don't overwrite it
+      let pending=false;try{pending=!!localStorage.getItem(PKEY)}catch(e){}
+      if(pending){firstSnap=false;renderAll();flushPush();return}
+    }
+    if(!firstSnap&&(d.t||0)<=(S._t||0))return;   // own echo / older; first load otherwise takes the cloud
     firstSnap=false;
     try{
       const remote=JSON.parse(d.s),theme=S.theme;   // keep this device's theme
@@ -388,7 +392,7 @@ function initCloud(){
   },err=>{
     setCloudBadge(false);
     if(err.code==='permission-denied'){
-      try{localStorage.removeItem(KEY)}catch(e){}
+      try{localStorage.removeItem(KEY);localStorage.removeItem(PKEY)}catch(e){}
       const th=S.theme;S=DEFAULT();S.theme=th;renderAll();
       showWait(`אין לך עדיין גישה לסידור.<br>פנה למנהל.<br><b>${displayName()}</b>`);
     } else toast('אין חיבור לענן כרגע');
@@ -426,8 +430,9 @@ async function loginName(){$('#gateErr').textContent='';const n=$('#gName').valu
   if(!normName(n)){$('#gateErr').textContent='כתוב שם משתמש';return}
   try{await firebase.auth().signInWithEmailAndPassword(name2email(n),p)}catch(x){gateErr(x.code==='auth/invalid-credential'||x.code==='auth/user-not-found'||x.code==='auth/wrong-password'?{code:'name-bad'}:x)}}
 async function recheckAccess(){const u=firebase.auth().currentUser;if(!u)return showGate();try{await u.reload();await u.getIdToken(true)}catch(e){}onUser(firebase.auth().currentUser)}
-async function logout(){if(unsub){unsub();unsub=null}cloudDoc=null;LAST_CLOUD=null;CAN_EDIT=false;IS_OWNER=false;
-  try{localStorage.removeItem(KEY)}catch(e){}const th=S.theme;S=DEFAULT();S.theme=th;renderAll();setCloudBadge(false);
+async function logout(){try{await flushPush()}catch(e){}  // never drop an unsent change
+  if(unsub){unsub();unsub=null}cloudDoc=null;LAST_CLOUD=null;CAN_EDIT=false;IS_OWNER=false;
+  try{localStorage.removeItem(KEY);localStorage.removeItem(PKEY)}catch(e){}const th=S.theme;S=DEFAULT();S.theme=th;renderAll();setCloudBadge(false);
   try{await firebase.auth().signOut()}catch(e){}showGate()}
 async function onUser(u){
   USER=u;
@@ -467,11 +472,27 @@ async function removeAccess(em){const nm=email2name(em)||em;try{await firebase.f
 function displayName(){return USER?(email2name(USER.email)||USER.email||''):''}
 function renderAccount(){const w=$('#whoami');if(w){w.textContent='';if(USER){w.append('מחובר כ: ');const b=el('b');b.textContent=displayName();w.append(b,' · '+(IS_OWNER?'מנהל':CAN_EDIT?'עורך':'צופה'))}}
   const c=$('#accessCard');if(c){c.style.display=IS_OWNER?'':'none';if(IS_OWNER)loadAccess()}}
+/* a local change is "pending" until the cloud confirms it — survives the app being closed or backgrounded */
+const PKEY='shiftapp.pending';
 function pushCloud(){
   if(!cloudDoc||!CAN_EDIT)return;
+  try{localStorage.setItem(PKEY,'1')}catch(e){}
   clearTimeout(pushTimer);
-  pushTimer=setTimeout(()=>{cloudDoc.set({s:JSON.stringify(S),t:S._t}).catch(()=>{})},400);
+  pushTimer=setTimeout(flushPush,400);
 }
+function flushPush(){
+  clearTimeout(pushTimer);
+  if(!cloudDoc||!CAN_EDIT)return Promise.resolve();
+  let pending=false;try{pending=!!localStorage.getItem(PKEY)}catch(e){}
+  if(!pending)return Promise.resolve();
+  const t=S._t;
+  return cloudDoc.set({s:JSON.stringify(S),t}).then(()=>{if(S._t===t)try{localStorage.removeItem(PKEY)}catch(e){}})
+    .catch(e=>toast(e.code==='permission-denied'?'אין לך הרשאה לשמור שינויים':'השינוי לא נשמר בענן, ננסה שוב'));
+}
+// mobile: save right away when the app goes to the background or closes (timers freeze there)
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')flushPush()});
+window.addEventListener('pagehide',()=>{flushPush()});
+window.addEventListener('online',()=>{flushPush()});
 function setCloudBadge(on){const b=document.getElementById('cloudBadge');if(b)b.textContent=on?'☁︎':''}
 const $=s=>document.querySelector(s), el=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e};
 const uid=()=>Math.random().toString(36).slice(2,8);
