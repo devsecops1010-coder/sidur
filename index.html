@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
-<meta name="theme-color" content="#0f172a">
+<meta name="theme-color" content="#eceffd" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#060818" media="(prefers-color-scheme: dark)">
 <title>סידור · ניהול משמרות</title>
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" id="appleIcon" href="icon.png">
@@ -218,6 +219,67 @@ body.readonly .wg-add{display:none}
 .install-bar .ib-ic{font-size:20px;flex:none}.install-bar .ib-t{flex:1;min-width:0}
 .install-bar .ib-x{border:none;background:none;color:var(--txt3);font-size:15px;padding:4px;flex:none}
 .ios-share{display:inline-grid;place-items:center;width:20px;height:20px;border:1.5px solid var(--accent);border-radius:5px;color:var(--accent);font-size:12px;vertical-align:-4px;margin:0 2px}
+
+/* =================== GLASS THEME (overrides) =================== */
+:root{
+  --bg:#eceffd;--card:rgba(255,255,255,.62);--card2:rgba(255,255,255,.42);
+  --line:rgba(30,41,90,.09);--ring:rgba(30,41,90,.18);
+  --glass-brd:rgba(255,255,255,.8);--glass-fx:saturate(170%) blur(20px);
+  --accent:#5b5bf0;--accent-d:#7c3aed;--accent-soft:rgba(99,102,241,.14);
+  --shadow:0 1px 1px rgba(30,41,90,.04),0 12px 32px rgba(67,56,202,.12);
+  --orb-a:rgba(99,102,241,.55);--orb-b:rgba(236,72,153,.36);--orb-c:rgba(20,184,166,.38);--orb-d:rgba(168,85,247,.40);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){
+  --bg:#060818;--card:rgba(24,28,52,.52);--card2:rgba(255,255,255,.045);
+  --line:rgba(255,255,255,.08);--ring:rgba(255,255,255,.16);--glass-brd:rgba(255,255,255,.11);
+  --accent:#8b8cff;--accent-d:#a78bfa;--accent-soft:rgba(139,140,255,.16);
+  --shadow:0 12px 36px rgba(0,0,0,.45);
+  --orb-a:rgba(99,102,241,.45);--orb-b:rgba(236,72,153,.22);--orb-c:rgba(20,184,166,.24);--orb-d:rgba(168,85,247,.30);
+}}
+:root[data-theme=dark]{
+  --bg:#060818;--card:rgba(24,28,52,.52);--card2:rgba(255,255,255,.045);
+  --line:rgba(255,255,255,.08);--ring:rgba(255,255,255,.16);--glass-brd:rgba(255,255,255,.11);
+  --accent:#8b8cff;--accent-d:#a78bfa;--accent-soft:rgba(139,140,255,.16);
+  --shadow:0 12px 36px rgba(0,0,0,.45);
+  --orb-a:rgba(99,102,241,.45);--orb-b:rgba(236,72,153,.22);--orb-c:rgba(20,184,166,.24);--orb-d:rgba(168,85,247,.30);
+}
+body{background:var(--bg);padding-bottom:calc(96px + var(--safe-b))}
+body::before{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background:radial-gradient(70vmax 55vmax at -5% -10%,var(--orb-a),transparent 60%),
+    radial-gradient(55vmax 45vmax at 105% 10%,var(--orb-b),transparent 60%),
+    radial-gradient(70vmax 55vmax at 85% 110%,var(--orb-c),transparent 60%),
+    radial-gradient(50vmax 45vmax at -10% 85%,var(--orb-d),transparent 60%)}
+/* frosted surfaces */
+.top,.tabbar,.wgrid,.sec-card,.mine-hero,.mine-stats div,.mine-list,.weeknav .wk,.nav-arrow,.emp,.statbox,.stype,
+.sheet,.gate-card,.install-bar,.iconbtn,.btn.ghost,.pickitem,.cday,.prog{
+  -webkit-backdrop-filter:var(--glass-fx);backdrop-filter:var(--glass-fx);border-color:var(--glass-brd)}
+.wgrid,.sec-card,.mine-hero,.mine-list,.gate-card,.emp,.statbox{border-radius:22px}
+.mine-stats div{border-radius:18px;box-shadow:var(--shadow)}
+.top{background:var(--card);border-bottom:1px solid var(--glass-brd)}
+.top .brand .dot,.gate-logo{background:linear-gradient(135deg,#6366f1,#a855f7);box-shadow:0 6px 16px rgba(99,102,241,.35)}
+/* floating glass tab bar */
+.tabbar{left:12px;right:12px;bottom:calc(10px + var(--safe-b));max-width:736px;border:1px solid var(--glass-brd);border-radius:24px;
+  padding:4px;background:var(--card);box-shadow:var(--shadow)}
+.tab{border-radius:18px;padding:7px 0 6px}
+.tab.active{background:var(--accent-soft)}
+/* buttons */
+.btn{background:linear-gradient(135deg,#6366f1,#8b5cf6);box-shadow:0 6px 18px rgba(99,102,241,.32);border-radius:14px}
+.btn.ghost{background:var(--card);box-shadow:none;border:1px solid var(--glass-brd)}
+.btn.danger{background:linear-gradient(135deg,#ef4444,#f43f5e);box-shadow:0 6px 18px rgba(239,68,68,.28)}
+.iconbtn{background:var(--card)}
+/* grid on glass */
+.wg-h.today,.wg-c.today{background:var(--accent-soft)}
+.wg-c:active{background:rgba(255,255,255,.25)}
+.wg-n{border-radius:8px;box-shadow:0 1px 0 rgba(255,255,255,.4) inset}
+/* login + sheets */
+.gate{background:transparent}
+.gate-card{background:var(--card);box-shadow:var(--shadow)}
+.sheet-bg{background:rgba(10,12,30,.35);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.sheet{background:var(--card);border:1px solid var(--glass-brd);border-bottom:none}
+.input{background:var(--card2);border-color:var(--ring)}
+.install-bar{background:var(--accent-soft);border-color:var(--glass-brd)}
+.mine-hero .big{background:linear-gradient(135deg,var(--accent),#c026d3);-webkit-background-clip:text;background-clip:text;color:transparent}
+@media (prefers-reduced-transparency:reduce){:root{--card:#fff;--card2:#f6f7fb}}
 </style>
 </head>
 <body>
