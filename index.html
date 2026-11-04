@@ -167,6 +167,7 @@ h2.page{font-size:22px;font-weight:800;margin:4px 0 14px;letter-spacing:-.02em}
   <div class="top">
     <div class="brand"><span class="dot" id="brandDot">ס</span><span id="brandName">הסידור שלי</span></div>
     <div class="sp"></div>
+    <span id="cloudBadge" title="מסונכרן בענן" style="color:var(--accent);font-size:15px;margin-inline-end:2px"></span>
     <button class="iconbtn" id="themeBtn" title="מצב כהה/בהיר">◐</button>
   </div>
 
@@ -281,6 +282,8 @@ h2.page{font-size:22px;font-weight:800;margin:4px 0 14px;letter-spacing:-.02em}
   <div class="sheet" id="sheet"></div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <script>
 /* ============ storage ============ */
 const KEY='shiftapp.v1';
@@ -297,7 +300,40 @@ const DEFAULT=()=>({
 });
 let S=load();
 function load(){try{const r=JSON.parse(localStorage.getItem(KEY));if(r&&r.stypes)return r}catch(e){}return DEFAULT()}
-function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+function save(){
+  if(!applyingRemote)S._t=Date.now();
+  try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}
+  if(!applyingRemote)pushCloud();
+}
+
+/* ============ firebase realtime sync ============ */
+const FB_CONFIG={apiKey:"AIzaSyBC3mvpnaMF-idW26lkkKpXyLo8ePE6apQ",authDomain:"ravakim-budapest.firebaseapp.com",projectId:"ravakim-budapest",storageBucket:"ravakim-budapest.firebasestorage.app",messagingSenderId:"864932417069",appId:"1:864932417069:web:773c95c4c286874105f2a4"};
+let cloudDoc=null,applyingRemote=false,pushTimer=null;
+function initCloud(){
+  try{
+    if(!window.firebase||!firebase.firestore)return;
+    firebase.initializeApp(FB_CONFIG);
+    cloudDoc=firebase.firestore().collection('sidur').doc('main');
+    cloudDoc.onSnapshot(snap=>{
+      const d=snap.data();if(!d||!d.s)return;
+      if((d.t||0)<=(S._t||0))return;           // our own echo or older — ignore
+      try{
+        const remote=JSON.parse(d.s),theme=S.theme;  // keep this device's theme
+        applyingRemote=true;S=remote;S.theme=theme;
+        try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}
+        applyingRemote=false;
+        applyTheme();setBiz(S.biz);renderAll();
+      }catch(e){}
+    },()=>{});
+    setCloudBadge(true);
+  }catch(e){setCloudBadge(false)}
+}
+function pushCloud(){
+  if(!cloudDoc)return;
+  clearTimeout(pushTimer);
+  pushTimer=setTimeout(()=>{cloudDoc.set({s:JSON.stringify(S),t:S._t}).catch(()=>{})},400);
+}
+function setCloudBadge(on){const b=document.getElementById('cloudBadge');if(b)b.textContent=on?'☁︎':''}
 const $=s=>document.querySelector(s), el=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e};
 const uid=()=>Math.random().toString(36).slice(2,8);
 const DAYS=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
@@ -567,6 +603,7 @@ function renderAll(){renderBoard();
 }
 function boot(){
   setBiz(S.biz);applyTheme();renderBoard();
+  initCloud();
   if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 }
 boot();
