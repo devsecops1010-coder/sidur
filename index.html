@@ -101,8 +101,8 @@ h2.page{font-size:22px;font-weight:800;margin:4px 0 14px;letter-spacing:-.02em}
 .btn.ghost{background:var(--card);color:var(--txt);border:1px solid var(--line)}
 .btn.sm{padding:8px 12px;font-size:13px;border-radius:10px}
 .btn.danger{background:var(--bad)}
-.fab{position:fixed;bottom:calc(84px + var(--safe-b));inset-inline-start:50%;transform:translateX(50%);
-  z-index:25;max-width:728px;width:calc(100% - 32px)}
+.fab{position:fixed;bottom:calc(84px + var(--safe-b));left:16px;right:16px;margin:0 auto;
+  z-index:25;max-width:728px;width:auto}
 .row-btns{display:flex;gap:8px}
 /* summary */
 .statgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
@@ -131,7 +131,7 @@ h2.page{font-size:22px;font-weight:800;margin:4px 0 14px;letter-spacing:-.02em}
 .sec-card h3{margin:0 0 10px;font-size:15px}
 /* tabbar */
 .tabbar{position:fixed;bottom:0;inset-inline:0;z-index:40;background:var(--card);border-top:1px solid var(--line);
-  display:grid;grid-template-columns:repeat(5,1fr);padding-bottom:var(--safe-b);max-width:760px;margin:0 auto;inset-inline:50%;transform:translateX(50%)}
+  display:grid;grid-template-columns:repeat(5,1fr);padding-bottom:var(--safe-b);max-width:760px;margin:0 auto;left:0;right:0}
 .tab{background:none;border:none;padding:8px 0 7px;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--txt3);font-size:11px;font-weight:600}
 .tab svg{width:23px;height:23px;stroke:currentColor;fill:none;stroke-width:1.9}
 .tab.active{color:var(--accent)}
