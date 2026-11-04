@@ -488,6 +488,9 @@ function shiftWeek(n){cur=addDays(cur,7*n);renderAll()}
 function goToday(){cur=startOfWeek(new Date());renderAll()}
 function weekObj(){const k=wkKey(cur);if(!S.sched[k])S.sched[k]={};return S.sched[k]}
 function hoursOf(st){let[a,b]=[st.start,st.end].map(t=>{const[h,m]=t.split(':').map(Number);return h+m/60});let d=b-a;if(d<=0)d+=24;return d}
+/* per-employee hours: emp.hours = {stypeId:{start,end}} overrides the shift's default times for that person only */
+function timesFor(st,e){const o=e&&e.hours&&e.hours[st.id];return o&&o.start&&o.end?{start:o.start,end:o.end,own:true}:{start:st.start,end:st.end,own:false}}
+function hoursFor(st,e){return hoursOf(timesFor(st,e))}
 
 /* ============ nav ============ */
 function go(sc){
@@ -534,7 +537,8 @@ function renderBoard(){
       const slots=el('div','slots');
       assigned.forEach(eid=>{
         const e=emp(eid);if(!e)return;
-        const chip=el('span','chip',`${e.name}<span class="x">✕</span>`);
+        const tf=timesFor(st,e);
+        const chip=el('span','chip',`${e.name}${tf.own?`<small style="opacity:.75;font-weight:500;direction:ltr">${tf.start}–${tf.end}</small>`:''}<span class="x">✕</span>`);
         chip.style.background=hex2soft(e.color);chip.style.color=e.color;chip.style.borderColor=hex2soft(e.color,.5);
         chip.querySelector('.x').onclick=ev=>{ev.stopPropagation();unassign(d,st.id,eid)};
         slots.appendChild(chip);
@@ -610,6 +614,12 @@ function openEmp(id){
     <div class="field"><label>שם</label><input class="input" id="e_name" value="${e.name}" placeholder="שם מלא"></div>
     <div class="field"><label>תפקיד</label><input class="input" id="e_role" value="${e.role||''}" placeholder="מלצר / טבח / קופאי…"></div>
     <div class="field"><label>מקסימום משמרות בשבוע</label><input class="input" id="e_max" type="number" min="0" max="21" value="${e.maxWeek||6}"></div>
+    <div class="field"><label>שעות אישיות (רק אם לעובד הזה יש שעות שונות מהרגיל)</label>
+      ${S.stypes.map(st=>{const o=(e.hours||{})[st.id]||{};return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <span style="flex:1;font-size:14px">${st.name} <span class="hint">(רגיל ${st.start}–${st.end})</span></span>
+        <input class="timeinput eh" data-st="${st.id}" data-k="start" type="time" style="width:96px" value="${o.start||''}">
+        <input class="timeinput eh" data-st="${st.id}" data-k="end" type="time" style="width:96px" value="${o.end||''}"></div>`}).join('')}
+      <p class="hint" style="margin:2px 0 0">השאר ריק כדי להשתמש בשעות הרגילות.</p></div>
     <div class="field"><label>צבע</label><div class="colorpick" id="e_colors">${COLORS.map(c=>`<button class="c${c===e.color?' sel':''}" style="background:${c}" onclick="selColor('${c}')"></button>`).join('')}</div></div>
     <input type="hidden" id="e_color" value="${e.color}">
     <div class="row-btns" style="margin-top:4px">
@@ -622,7 +632,9 @@ function selColor(c){$('#e_color').value=c;document.querySelectorAll('#e_colors 
 function hexToRgbStr(hex){const n=parseInt(hex.slice(1),16);return `rgb(${n>>16&255}, ${n>>8&255}, ${n&255})`}
 function saveEmp(id){
   const name=$('#e_name').value.trim();if(!name){toast('צריך שם');return}
-  const data={name,role:$('#e_role').value.trim(),color:$('#e_color').value,maxWeek:+$('#e_max').value||0};
+  const hours={};document.querySelectorAll('#sheet .eh').forEach(i=>{if(i.value){(hours[i.dataset.st]=hours[i.dataset.st]||{})[i.dataset.k]=i.value}});
+  Object.keys(hours).forEach(k=>{if(!hours[k].start||!hours[k].end)delete hours[k]}); // need both start and end
+  const data={name,role:$('#e_role').value.trim(),color:$('#e_color').value,maxWeek:+$('#e_max').value||0,hours};
   if(id){Object.assign(emp(id),data)}else{S.emps.push({id:uid(),...data})}
   save();closeSheet();renderEmps();renderBoard();toast('נשמר');
 }
@@ -633,7 +645,7 @@ function delEmp(id){
   save();closeSheet();renderEmps();renderBoard();toast('העובד נמחק');
 }
 function countEmpWeek(id){const w=weekObj();let n=0;for(let d=0;d<7;d++)S.stypes.forEach(st=>{if((((w['d'+d]||{})[st.id])||[]).includes(id))n++});return n}
-function empHoursWeek(id){const w=weekObj();let h=0;for(let d=0;d<7;d++)S.stypes.forEach(st=>{if((((w['d'+d]||{})[st.id])||[]).includes(id))h+=hoursOf(st)});return Math.round(h)}
+function empHoursWeek(id){const w=weekObj(),e=emp(id);let h=0;for(let d=0;d<7;d++)S.stypes.forEach(st=>{if((((w['d'+d]||{})[st.id])||[]).includes(id))h+=hoursFor(st,e)});return Math.round(h)}
 
 /* ============ CONSTRAINTS ============ */
 function renderConstraints(){
@@ -667,7 +679,7 @@ function renderSummary(){
   const gaps=[];
   for(let d=0;d<7;d++)S.stypes.forEach(st=>{
     const a=(((w['d'+d]||{})[st.id])||[]);
-    totalShifts+=a.length;a.forEach(id=>{if(per[id]){per[id].s++;per[id].h+=hoursOf(st);totalHours+=hoursOf(st)}});
+    totalShifts+=a.length;a.forEach(id=>{if(per[id]){const hh=hoursFor(st,emp(id));per[id].s++;per[id].h+=hh;totalHours+=hh}});
     if(a.length<S.minCov)gaps.push({d,st,miss:S.minCov-a.length});
   });
   $('#statGrid').innerHTML=`
@@ -693,7 +705,7 @@ function renderSummary(){
 function shareSchedule(){
   const w=weekObj();let txt=`📅 סידור עבודה · ${S.biz}\n${fmtDM(cur)}–${fmtDM(addDays(cur,6))}\n`;
   for(let d=0;d<7;d++){let any=false,lines='';
-    S.stypes.forEach(st=>{const a=(((w['d'+d]||{})[st.id])||[]).map(id=>emp(id)?.name).filter(Boolean);
+    S.stypes.forEach(st=>{const a=(((w['d'+d]||{})[st.id])||[]).map(id=>{const e=emp(id);if(!e)return null;const tf=timesFor(st,e);return tf.own?`${e.name} (${tf.start}–${tf.end})`:e.name}).filter(Boolean);
       if(a.length){any=true;lines+=`  ${st.name}: ${a.join(', ')}\n`}});
     if(any)txt+=`\n*${DAYS[d]} ${fmtDM(addDays(cur,d))}*\n`+lines;}
   if(navigator.share)navigator.share({title:'סידור עבודה',text:txt}).catch(()=>{});
