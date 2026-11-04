@@ -187,14 +187,6 @@ body.readonly .addslot,body.readonly .chip .x,body.readonly #pubBtn,body.readonl
       <input class="input" id="gPass" type="password" dir="ltr" placeholder="סיסמה" autocomplete="current-password" style="margin-top:8px" onkeydown="if(event.key==='Enter')loginName()">
       <button class="btn block" style="margin-top:10px" onclick="loginName()">כניסה</button>
       <p class="hint" style="margin:12px 0 0">שכחת סיסמה או אין לך משתמש? פנה למנהל.</p>
-      <button class="linkbtn" id="setupLink" onclick="toggleSetup()">הגדרת מנהל (פעם ראשונה)</button>
-      <div id="setupBox" style="display:none;margin-top:8px;border-top:1px solid var(--line);padding-top:12px">
-        <p class="hint" style="margin:0 0 8px">בחר שם וסיסמה לחשבון המנהל שלך.</p>
-        <input class="input" id="sName" placeholder="שם המנהל" autocapitalize="off">
-        <input class="input" id="sPass" type="password" dir="ltr" placeholder="סיסמה, 6 תווים לפחות" style="margin-top:8px" autocomplete="new-password">
-        <input class="input" id="sPass2" type="password" dir="ltr" placeholder="הסיסמה שוב" style="margin-top:8px" autocomplete="new-password">
-        <button class="btn block ghost" style="margin-top:10px" onclick="createOwner()">צור חשבון מנהל</button>
-      </div>
     </div>
     <div id="gateWait" style="display:none">
       <p id="gateWaitMsg" style="line-height:1.6"></p>
