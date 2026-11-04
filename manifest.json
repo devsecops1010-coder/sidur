@@ -1,6 +1,8 @@
 {
+  "id": "./",
   "name": "סידור · ניהול משמרות",
   "short_name": "סידור",
+  "description": "סידור עבודה ומשמרות לצוות",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
@@ -10,7 +12,8 @@
   "background_color": "#0f172a",
   "theme_color": "#0f172a",
   "icons": [
-    { "src": "icon.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }

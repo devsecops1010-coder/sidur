@@ -174,6 +174,11 @@ body.readonly .addslot,body.readonly .chip .x,body.readonly #pubBtn,body.readonl
 .acc-row{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}
 .acc-row .em{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;direction:ltr;text-align:start}
 .acc-role{font-size:12px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--accent-soft);color:var(--accent)}
+/* install-to-home-screen */
+.install-bar{display:flex;align-items:center;gap:10px;background:var(--accent-soft);border:1px solid var(--accent);border-radius:14px;padding:10px 12px;margin-bottom:12px;font-size:13px;line-height:1.5}
+.install-bar .ib-ic{font-size:20px;flex:none}.install-bar .ib-t{flex:1;min-width:0}
+.install-bar .ib-x{border:none;background:none;color:var(--txt3);font-size:15px;padding:4px;flex:none}
+.ios-share{display:inline-grid;place-items:center;width:20px;height:20px;border:1.5px solid var(--accent);border-radius:5px;color:var(--accent);font-size:12px;vertical-align:-4px;margin:0 2px}
 </style>
 </head>
 <body>
@@ -194,6 +199,7 @@ body.readonly .addslot,body.readonly .chip .x,body.readonly #pubBtn,body.readonl
       <button class="btn block ghost" style="margin-top:8px" onclick="logout()">התנתקות</button>
     </div>
     <div class="gate-err" id="gateErr"></div>
+    <div id="gateInstall" class="hint" style="display:none;margin-top:14px;line-height:1.6"></div>
   </div>
 </div>
 <div id="toasts"></div>
@@ -208,6 +214,7 @@ body.readonly .addslot,body.readonly .chip .x,body.readonly #pubBtn,body.readonl
   <!-- BOARD -->
   <section class="screen on" id="sc-board">
     <div class="wrap">
+      <div id="installBar" class="install-bar" style="display:none"></div>
       <div class="weeknav">
         <button class="nav-arrow" onclick="shiftWeek(1)">›</button>
         <div class="wk"><b id="wkLabel">—</b><span id="wkSub">—</span></div>
@@ -283,6 +290,10 @@ body.readonly .addslot,body.readonly .chip .x,body.readonly #pubBtn,body.readonl
           <input class="timeinput" id="minCov" type="number" min="0" max="20" onchange="setMinCov(this.value)">
           <span class="muted">עובדים לכל משמרת</span>
         </div>
+      </div>
+      <div class="sec-card">
+        <h3>📲 התקנה במסך הבית</h3>
+        <div id="installCardBody" class="hint" style="margin-top:0;line-height:1.6"></div>
       </div>
       <div class="sec-card">
         <h3>חשבון</h3>
@@ -735,7 +746,7 @@ function shareSchedule(){
 
 /* ============ SETTINGS ============ */
 function renderSettings(){
-  renderAccount();
+  renderAccount();renderInstall();
   $('#bizName').value=S.biz;$('#minCov').value=S.minCov;
   const l=$('#stypeList');l.innerHTML='';
   S.stypes.forEach(st=>{
@@ -775,8 +786,35 @@ function renderAll(){renderBoard();
   const on=document.querySelector('.screen.on').id.replace('sc-','');
   if(on==='emps')renderEmps();if(on==='constraints')renderConstraints();if(on==='summary')renderSummary();if(on==='settings')renderSettings();
 }
+/* ============ install to home screen ============ */
+let deferredPrompt=null;
+const isStandalone=()=>window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+const isIOS=()=>/iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+const isIOSSafari=()=>isIOS()&&!/crios|fxios|edgios|gsa\//i.test(navigator.userAgent);
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;renderInstall()});
+window.addEventListener('appinstalled',()=>{deferredPrompt=null;renderInstall();toast('סידור הותקן במסך הבית ✓')});
+function installInfo(){
+  if(isStandalone())return null;
+  if(deferredPrompt)return{text:'התקן את סידור כאפליקציה, עם אייקון במסך הבית',btn:'התקן'};
+  if(isIOS())return isIOSSafari()
+    ?{text:'להתקנה באייפון: לחץ על כפתור השיתוף <span class="ios-share">⬆︎</span> בתחתית Safari, ואז <b>"הוסף למסך הבית"</b>'}
+    :{text:'כדי להתקין באייפון, פתח את הקישור הזה ב-<b>Safari</b>'};
+  return{text:'להתקנה: בתפריט הדפדפן (⋮) בחר <b>"התקן אפליקציה"</b> או <b>"הוסף למסך הבית"</b>'};
+}
+function doInstall(){if(!deferredPrompt)return;deferredPrompt.prompt();deferredPrompt.userChoice.finally(()=>{deferredPrompt=null;renderInstall()})}
+function dismissInstall(){try{localStorage.setItem('sidur.installDismiss',String(Date.now()))}catch(e){}renderInstall()}
+function renderInstall(){
+  const h=installInfo();let dismissed=false;
+  try{dismissed=Date.now()-(+localStorage.getItem('sidur.installDismiss')||0)<7*864e5}catch(e){}
+  const bar=$('#installBar');
+  if(bar){if(!h||dismissed)bar.style.display='none';else{bar.style.display='';bar.innerHTML=`<span class="ib-ic">📲</span><div class="ib-t">${h.text}</div>${h.btn?`<button class="btn sm" onclick="doInstall()">${h.btn}</button>`:''}<button class="ib-x" onclick="dismissInstall()" aria-label="סגור">✕</button>`}}
+  const g=$('#gateInstall');
+  if(g){if(!h)g.style.display='none';else{g.style.display='';g.innerHTML=`📲 ${h.text}${h.btn?` <button class="linkbtn" style="margin:0" onclick="doInstall()">${h.btn}</button>`:''}`}}
+  const c=$('#installCardBody');
+  if(c)c.innerHTML=isStandalone()?'✓ סידור מותקן במסך הבית של המכשיר הזה.':(h?h.text+(h.btn?'<div style="margin-top:8px"><button class="btn sm" onclick="doInstall()">'+h.btn+'</button></div>':''):'');
+}
 function boot(){
-  setBiz(S.biz);applyTheme();renderBoard();
+  setBiz(S.biz);applyTheme();renderBoard();renderInstall();
   if(fbInit()){firebase.auth().getRedirectResult().catch(gateErr);firebase.auth().onAuthStateChanged(onUser)}
   else $('#gateErr').textContent='לא הצלחתי לטעון את מערכת הכניסה. בדוק חיבור לאינטרנט ורענן.';
   if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
