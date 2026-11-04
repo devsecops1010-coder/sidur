@@ -1,0 +1,575 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
+<meta name="theme-color" content="#0f172a">
+<title>סידור · ניהול משמרות</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" id="appleIcon" href="icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="סידור">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f1f5f9;--card:#ffffff;--card2:#f8fafc;--line:#e2e8f0;--ring:#cbd5e1;
+  --txt:#0f172a;--txt2:#64748b;--txt3:#94a3b8;
+  --accent:#4f46e5;--accent-d:#4338ca;--accent-soft:#eef2ff;
+  --ok:#16a34a;--ok-soft:#dcfce7;--warn:#d97706;--warn-soft:#fef3c7;--bad:#dc2626;--bad-soft:#fee2e2;
+  --shadow:0 1px 2px rgba(15,23,42,.06),0 4px 16px rgba(15,23,42,.06);
+  --safe-b:env(safe-area-inset-bottom);--safe-t:env(safe-area-inset-top);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){
+  --bg:#0b1120;--card:#111a2e;--card2:#0f1829;--line:#1e293b;--ring:#334155;
+  --txt:#e8eef7;--txt2:#94a3b8;--txt3:#64748b;
+  --accent:#6366f1;--accent-d:#4f46e5;--accent-soft:#1e213a;
+  --ok:#22c55e;--ok-soft:#0e2a1a;--warn:#f59e0b;--warn-soft:#2a2008;--bad:#ef4444;--bad-soft:#2a1113;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 18px rgba(0,0,0,.35);
+}}
+:root[data-theme=dark]{
+  --bg:#0b1120;--card:#111a2e;--card2:#0f1829;--line:#1e293b;--ring:#334155;
+  --txt:#e8eef7;--txt2:#94a3b8;--txt3:#64748b;
+  --accent:#6366f1;--accent-d:#4f46e5;--accent-soft:#1e213a;
+  --ok:#22c55e;--ok-soft:#0e2a1a;--warn:#f59e0b;--warn-soft:#2a2008;--bad:#ef4444;--bad-soft:#2a1113;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 18px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{font-family:Heebo,system-ui,sans-serif;background:var(--bg);color:var(--txt);
+  font-size:15px;line-height:1.45;overscroll-behavior-y:none;
+  padding-bottom:calc(72px + var(--safe-b))}
+button{font-family:inherit;cursor:pointer}
+input,select,textarea{font-family:inherit;font-size:16px}
+.app{max-width:760px;margin:0 auto}
+/* top bar */
+.top{position:sticky;top:0;z-index:30;background:var(--card);border-bottom:1px solid var(--line);
+  padding:calc(10px + var(--safe-t)) 16px 10px;display:flex;align-items:center;gap:10px}
+.top .brand{font-weight:800;font-size:18px;letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
+.top .brand .dot{width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent-d));
+  display:grid;place-items:center;color:#fff;font-size:15px;font-weight:800}
+.top .sp{flex:1}
+.iconbtn{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--card2);
+  color:var(--txt2);display:grid;place-items:center;font-size:17px}
+.wrap{padding:14px 16px 24px}
+h2.page{font-size:22px;font-weight:800;margin:4px 0 14px;letter-spacing:-.02em}
+.muted{color:var(--txt2)}
+.hint{color:var(--txt3);font-size:13px}
+/* week nav */
+.weeknav{display:flex;align-items:center;gap:8px;margin-bottom:14px}
+.weeknav .wk{flex:1;text-align:center;background:var(--card);border:1px solid var(--line);border-radius:12px;
+  padding:8px 10px;box-shadow:var(--shadow)}
+.weeknav .wk b{font-size:15px}.weeknav .wk span{display:block;font-size:12px;color:var(--txt2)}
+.nav-arrow{width:40px;height:40px;border-radius:12px;border:1px solid var(--line);background:var(--card);
+  color:var(--txt);font-size:20px;display:grid;place-items:center;box-shadow:var(--shadow)}
+.pub-badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px}
+.pub-yes{background:var(--ok-soft);color:var(--ok)}.pub-no{background:var(--warn-soft);color:var(--warn)}
+/* board */
+.board{display:flex;flex-direction:column;gap:10px}
+.daycard{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);overflow:hidden}
+.dayhdr{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--card2);border-bottom:1px solid var(--line)}
+.dayhdr .dn{font-weight:800}.dayhdr .dd{color:var(--txt2);font-size:13px}
+.dayhdr.today{background:var(--accent-soft)}
+.dayhdr .cov{margin-inline-start:auto;font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px}
+.shiftrow{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border-top:1px solid var(--line)}
+.shiftrow:first-child{border-top:none}
+.stag{flex:none;width:76px;padding-top:2px}
+.stag .nm{font-weight:700;font-size:13px}.stag .tm{color:var(--txt3);font-size:11px;font-variant-numeric:tabular-nums}
+.stag .bar{height:3px;border-radius:2px;margin-top:4px}
+.slots{flex:1;display:flex;flex-wrap:wrap;gap:6px;min-height:34px}
+.chip{display:inline-flex;align-items:center;gap:5px;padding:5px 9px;border-radius:999px;font-size:13px;font-weight:600;
+  border:1px solid transparent;max-width:100%}
+.chip .x{opacity:.6;font-weight:800;margin-inline-start:2px}
+.addslot{display:grid;place-items:center;width:34px;height:34px;border-radius:10px;border:1.5px dashed var(--ring);
+  background:transparent;color:var(--txt3);font-size:20px;line-height:1}
+.need{color:var(--bad);font-size:12px;align-self:center;font-weight:700}
+/* employees */
+.emp-list{display:flex;flex-direction:column;gap:8px}
+.emp{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:14px;
+  padding:12px 14px;box-shadow:var(--shadow)}
+.ava{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:800;font-size:16px;flex:none}
+.emp .info{flex:1;min-width:0}
+.emp .info b{display:block}.emp .info span{color:var(--txt2);font-size:13px}
+.emp .stat{text-align:center;font-size:12px;color:var(--txt2)}
+.emp .stat b{display:block;font-size:17px;color:var(--txt);font-variant-numeric:tabular-nums}
+/* buttons */
+.btn{border:none;border-radius:12px;padding:12px 16px;font-weight:700;font-size:15px;background:var(--accent);color:#fff;
+  box-shadow:var(--shadow)}
+.btn.block{display:block;width:100%}
+.btn.ghost{background:var(--card);color:var(--txt);border:1px solid var(--line)}
+.btn.sm{padding:8px 12px;font-size:13px;border-radius:10px}
+.btn.danger{background:var(--bad)}
+.fab{position:fixed;bottom:calc(84px + var(--safe-b));inset-inline-start:50%;transform:translateX(50%);
+  z-index:25;max-width:728px;width:calc(100% - 32px)}
+.row-btns{display:flex;gap:8px}
+/* summary */
+.statgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+.statbox{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;text-align:center;box-shadow:var(--shadow)}
+.statbox .v{font-size:24px;font-weight:800;font-variant-numeric:tabular-nums}
+.statbox .l{font-size:12px;color:var(--txt2);margin-top:2px}
+.hoursrow{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line)}
+.hoursrow .barwrap{flex:1}
+.hoursrow .track{height:8px;border-radius:999px;background:var(--line);overflow:hidden}
+.hoursrow .fill{height:100%;border-radius:999px;background:var(--accent)}
+.hoursrow .hv{font-weight:800;font-variant-numeric:tabular-nums;min-width:58px;text-align:start}
+/* constraints */
+.cweek{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin:6px 0 2px}
+.cday{text-align:center;padding:8px 2px;border-radius:10px;border:1px solid var(--line);background:var(--card);font-size:12px;font-weight:600}
+.cday.off{background:var(--bad-soft);border-color:var(--bad);color:var(--bad)}
+.cday .dnum{display:block;font-size:14px;font-weight:800;margin-top:2px}
+/* settings */
+.field{margin-bottom:14px}
+.field label{display:block;font-size:13px;font-weight:600;color:var(--txt2);margin-bottom:6px}
+.input{width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--txt);outline:none}
+.input:focus{border-color:var(--accent)}
+.stype{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px;box-shadow:var(--shadow)}
+.stype .sw{width:16px;height:16px;border-radius:5px;flex:none}
+.timeinput{width:62px;padding:7px;border-radius:8px;border:1px solid var(--line);background:var(--card2);color:var(--txt);text-align:center;font-variant-numeric:tabular-nums}
+.sec-card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;box-shadow:var(--shadow);margin-bottom:14px}
+.sec-card h3{margin:0 0 10px;font-size:15px}
+/* tabbar */
+.tabbar{position:fixed;bottom:0;inset-inline:0;z-index:40;background:var(--card);border-top:1px solid var(--line);
+  display:grid;grid-template-columns:repeat(5,1fr);padding-bottom:var(--safe-b);max-width:760px;margin:0 auto;inset-inline:50%;transform:translateX(50%)}
+.tab{background:none;border:none;padding:8px 0 7px;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--txt3);font-size:11px;font-weight:600}
+.tab svg{width:23px;height:23px;stroke:currentColor;fill:none;stroke-width:1.9}
+.tab.active{color:var(--accent)}
+/* modal */
+.sheet-bg{position:fixed;inset:0;z-index:60;background:rgba(15,23,42,.5);backdrop-filter:blur(2px);display:none;align-items:flex-end;justify-content:center}
+.sheet-bg.open{display:flex}
+.sheet{background:var(--card);width:100%;max-width:760px;border-radius:22px 22px 0 0;padding:18px 16px calc(18px + var(--safe-b));
+  max-height:86vh;overflow:auto;animation:up .24s cubic-bezier(.2,.8,.2,1)}
+@keyframes up{from{transform:translateY(30px);opacity:.6}to{transform:none;opacity:1}}
+.sheet .grab{width:40px;height:4px;border-radius:999px;background:var(--ring);margin:0 auto 14px}
+.sheet h3{margin:0 0 4px;font-size:19px;font-weight:800}
+.pickgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:12px}
+.pickitem{display:flex;align-items:center;gap:10px;padding:10px;border-radius:12px;border:1px solid var(--line);background:var(--card2)}
+.pickitem.dis{opacity:.45}
+.pickitem .rsn{font-size:11px;color:var(--bad);font-weight:700}
+.colorpick{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+.colorpick .c{width:30px;height:30px;border-radius:50%;border:2px solid transparent}
+.colorpick .c.sel{border-color:var(--txt)}
+/* toast */
+#toasts{position:fixed;top:calc(12px + var(--safe-t));inset-inline:0;z-index:80;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none}
+.toast{background:var(--txt);color:var(--bg);padding:10px 16px;border-radius:999px;font-size:13px;font-weight:600;box-shadow:var(--shadow);animation:tin .3s}
+@keyframes tin{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:none}}
+.empty{text-align:center;padding:40px 20px;color:var(--txt3)}
+.empty .ic{font-size:40px;margin-bottom:8px}
+.screen{display:none}.screen.on{display:block;animation:fade .25s}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+</head>
+<body>
+<div id="toasts"></div>
+<div class="app">
+  <div class="top">
+    <div class="brand"><span class="dot" id="brandDot">ס</span><span id="brandName">הסידור שלי</span></div>
+    <div class="sp"></div>
+    <button class="iconbtn" id="themeBtn" title="מצב כהה/בהיר">◐</button>
+  </div>
+
+  <!-- BOARD -->
+  <section class="screen on" id="sc-board">
+    <div class="wrap">
+      <div class="weeknav">
+        <button class="nav-arrow" onclick="shiftWeek(1)">›</button>
+        <div class="wk"><b id="wkLabel">—</b><span id="wkSub">—</span></div>
+        <button class="nav-arrow" onclick="shiftWeek(-1)">‹</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+        <span class="pub-badge pub-no" id="pubBadge">טיוטה</span>
+        <span class="sp" style="flex:1"></span>
+        <button class="btn sm ghost" onclick="goToday()">השבוע</button>
+        <button class="btn sm" id="pubBtn" onclick="togglePublish()">פרסם סידור</button>
+      </div>
+      <div class="board" id="board"></div>
+    </div>
+  </section>
+
+  <!-- EMPLOYEES -->
+  <section class="screen" id="sc-emps">
+    <div class="wrap">
+      <h2 class="page">עובדים</h2>
+      <div class="emp-list" id="empList"></div>
+      <button class="btn block fab" onclick="openEmp()">+ הוסף עובד</button>
+    </div>
+  </section>
+
+  <!-- CONSTRAINTS -->
+  <section class="screen" id="sc-constraints">
+    <div class="wrap">
+      <h2 class="page">אילוצים</h2>
+      <p class="hint" style="margin-top:-8px">סמן ימים שבהם עובד לא יכול לעבוד בשבוע הנבחר. משבצות חסומות לא יוצעו בשיבוץ.</p>
+      <div class="weeknav" style="margin-top:14px">
+        <button class="nav-arrow" onclick="shiftWeek(1)">›</button>
+        <div class="wk"><b id="wkLabel2">—</b><span id="wkSub2">—</span></div>
+        <button class="nav-arrow" onclick="shiftWeek(-1)">‹</button>
+      </div>
+      <div id="constrList"></div>
+    </div>
+  </section>
+
+  <!-- SUMMARY -->
+  <section class="screen" id="sc-summary">
+    <div class="wrap">
+      <h2 class="page">סיכום שבועי</h2>
+      <div class="statgrid" id="statGrid"></div>
+      <div class="sec-card">
+        <h3>שעות לפי עובד</h3>
+        <div id="hoursList"></div>
+      </div>
+      <div class="sec-card" id="gapsCard" style="display:none">
+        <h3>⚠️ חוסרים בכיסוי</h3>
+        <div id="gapsList"></div>
+      </div>
+      <button class="btn block ghost" onclick="shareSchedule()">📤 שתף את הסידור</button>
+    </div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section class="screen" id="sc-settings">
+    <div class="wrap">
+      <h2 class="page">הגדרות</h2>
+      <div class="sec-card">
+        <h3>שם העסק</h3>
+        <input class="input" id="bizName" placeholder="הסידור שלי" oninput="setBiz(this.value)">
+      </div>
+      <div class="sec-card">
+        <h3>סוגי משמרות</h3>
+        <div id="stypeList"></div>
+        <button class="btn sm ghost" onclick="addShiftType()" style="margin-top:6px">+ סוג משמרת</button>
+      </div>
+      <div class="sec-card">
+        <h3>כיסוי נדרש למשמרת</h3>
+        <p class="hint" style="margin-top:0">כמה עובדים צריך בכל משמרת (ברירת מחדל). חוסר יסומן באדום בלוח.</p>
+        <div style="display:flex;align-items:center;gap:10px">
+          <input class="timeinput" id="minCov" type="number" min="0" max="20" onchange="setMinCov(this.value)">
+          <span class="muted">עובדים לכל משמרת</span>
+        </div>
+      </div>
+      <div class="sec-card">
+        <h3>נתונים</h3>
+        <div class="row-btns">
+          <button class="btn sm ghost" onclick="exportData()">ייצוא גיבוי</button>
+          <button class="btn sm ghost" onclick="seedDemo()">נתוני דוגמה</button>
+          <button class="btn sm danger" onclick="wipeAll()">איפוס</button>
+        </div>
+      </div>
+      <p class="hint" style="text-align:center;margin-top:18px">סידור · מערכת ניהול משמרות · נשמר במכשיר שלך</p>
+    </div>
+  </section>
+</div>
+
+<!-- tab bar -->
+<nav class="tabbar">
+  <button class="tab active" data-sc="board" onclick="go('board')">
+    <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>לוח</button>
+  <button class="tab" data-sc="emps" onclick="go('emps')">
+    <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20a5.5 5.5 0 0111 0M16 11a3 3 0 000-6M20.5 20a5.5 5.5 0 00-4-5.3"/></svg>עובדים</button>
+  <button class="tab" data-sc="constraints" onclick="go('constraints')">
+    <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18"/><path d="M9 14l2 2 4-4"/></svg>אילוצים</button>
+  <button class="tab" data-sc="summary" onclick="go('summary')">
+    <svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>סיכום</button>
+  <button class="tab" data-sc="settings" onclick="go('settings')">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg>הגדרות</button>
+</nav>
+
+<!-- sheet -->
+<div class="sheet-bg" id="sheetBg" onclick="if(event.target===this)closeSheet()">
+  <div class="sheet" id="sheet"></div>
+</div>
+
+<script>
+/* ============ storage ============ */
+const KEY='shiftapp.v1';
+const DEFAULT=()=>({
+  biz:'הסידור שלי', minCov:2, theme:'auto',
+  stypes:[
+    {id:'morning',name:'בוקר',start:'07:00',end:'15:00',color:'#f59e0b'},
+    {id:'noon',name:'צהריים',start:'15:00',end:'23:00',color:'#0ea5e9'},
+    {id:'night',name:'לילה',start:'23:00',end:'07:00',color:'#6366f1'},
+  ],
+  emps:[],
+  sched:{},      // weekKey -> {d0:{morning:[empId]}, published:bool}
+  constr:{},     // weekKey -> {empId:[dayIdx]}
+});
+let S=load();
+function load(){try{const r=JSON.parse(localStorage.getItem(KEY));if(r&&r.stypes)return r}catch(e){}return DEFAULT()}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+const $=s=>document.querySelector(s), el=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e};
+const uid=()=>Math.random().toString(36).slice(2,8);
+const DAYS=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+const COLORS=['#ef4444','#f59e0b','#eab308','#22c55e','#10b981','#06b6d4','#0ea5e9','#6366f1','#8b5cf6','#ec4899','#f43f5e','#64748b'];
+
+/* ============ week math ============ */
+let cur=startOfWeek(new Date());
+function startOfWeek(d){const x=new Date(d);x.setHours(0,0,0,0);x.setDate(x.getDate()-x.getDay());return x}
+function wkKey(d){return d.toISOString().slice(0,10)}
+function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x}
+function fmtDM(d){return d.getDate()+'.'+(d.getMonth()+1)}
+function shiftWeek(n){cur=addDays(cur,7*n);renderAll()}
+function goToday(){cur=startOfWeek(new Date());renderAll()}
+function weekObj(){const k=wkKey(cur);if(!S.sched[k])S.sched[k]={};return S.sched[k]}
+function hoursOf(st){let[a,b]=[st.start,st.end].map(t=>{const[h,m]=t.split(':').map(Number);return h+m/60});let d=b-a;if(d<=0)d+=24;return d}
+
+/* ============ nav ============ */
+function go(sc){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
+  $('#sc-'+sc).classList.add('on');
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.sc===sc));
+  window.scrollTo(0,0);
+  if(sc==='emps')renderEmps();
+  if(sc==='constraints')renderConstraints();
+  if(sc==='summary')renderSummary();
+  if(sc==='settings')renderSettings();
+}
+function toast(msg){const t=el('div','toast',msg);$('#toasts').appendChild(t);setTimeout(()=>{t.style.opacity=0;setTimeout(()=>t.remove(),300)},2200)}
+
+/* ============ sheet ============ */
+function openSheet(html){$('#sheet').innerHTML='<div class="grab"></div>'+html;$('#sheetBg').classList.add('open')}
+function closeSheet(){$('#sheetBg').classList.remove('open')}
+
+/* ============ BOARD ============ */
+function renderBoard(){
+  const k=wkKey(cur),w=weekObj(),today=wkKey(startOfWeek(new Date()))===k?new Date().getDay():-1;
+  $('#wkLabel').textContent=fmtDM(cur)+' – '+fmtDM(addDays(cur,6));
+  $('#wkLabel2')&&($('#wkLabel2').textContent=$('#wkLabel').textContent);
+  const sub='שבוע '+weekNum(cur);
+  $('#wkSub').textContent=sub;$('#wkSub2')&&($('#wkSub2').textContent=sub);
+  const pub=!!w.published;
+  $('#pubBadge').textContent=pub?'פורסם':'טיוטה';
+  $('#pubBadge').className='pub-badge '+(pub?'pub-yes':'pub-no');
+  $('#pubBtn').textContent=pub?'בטל פרסום':'פרסם סידור';
+  const b=$('#board');b.innerHTML='';
+  if(!S.emps.length){b.appendChild(el('div','empty','<div class="ic">👥</div>אין עדיין עובדים.<br>הוסף עובדים כדי לשבץ משמרות.'));return}
+  for(let d=0;d<7;d++){
+    const card=el('div','daycard');
+    const hdr=el('div','dayhdr'+(d===today?' today':''));
+    const date=addDays(cur,d);
+    hdr.innerHTML=`<span class="dn">${DAYS[d]}</span><span class="dd">${fmtDM(date)}</span>`;
+    let dayAssigned=0,dayNeed=0;
+    const rows=document.createDocumentFragment();
+    S.stypes.forEach(st=>{
+      const assigned=((w['d'+d]||{})[st.id])||[];
+      dayAssigned+=assigned.length;dayNeed+=S.minCov;
+      const row=el('div','shiftrow');
+      row.innerHTML=`<div class="stag"><div class="nm">${st.name}</div><div class="tm">${st.start}–${st.end}</div><div class="bar" style="background:${st.color}"></div></div>`;
+      const slots=el('div','slots');
+      assigned.forEach(eid=>{
+        const e=emp(eid);if(!e)return;
+        const chip=el('span','chip',`${e.name}<span class="x">✕</span>`);
+        chip.style.background=hex2soft(e.color);chip.style.color=e.color;chip.style.borderColor=hex2soft(e.color,.5);
+        chip.querySelector('.x').onclick=ev=>{ev.stopPropagation();unassign(d,st.id,eid)};
+        slots.appendChild(chip);
+      });
+      const add=el('button','addslot','+');
+      add.onclick=()=>pickEmployee(d,st.id);
+      slots.appendChild(add);
+      if(assigned.length<S.minCov)slots.appendChild(el('span','need','חסר '+(S.minCov-assigned.length)));
+      row.appendChild(slots);
+      rows.appendChild(row);
+    });
+    const covPct=dayNeed?Math.round(dayAssigned/dayNeed*100):100;
+    const cov=el('span','cov');cov.textContent=covPct+'%';
+    cov.style.background=covPct>=100?'var(--ok-soft)':covPct>=50?'var(--warn-soft)':'var(--bad-soft)';
+    cov.style.color=covPct>=100?'var(--ok)':covPct>=50?'var(--warn)':'var(--bad)';
+    hdr.appendChild(cov);
+    card.appendChild(hdr);card.appendChild(rows);b.appendChild(card);
+  }
+}
+function weekNum(d){const o=new Date(d.getFullYear(),0,1);return Math.ceil(((d-o)/864e5+o.getDay()+1)/7)}
+function emp(id){return S.emps.find(e=>e.id===id)}
+function hex2soft(hex,a=.14){const n=parseInt(hex.slice(1),16);return `rgba(${n>>16&255},${n>>8&255},${n&255},${a})`}
+
+function pickEmployee(d,stid){
+  const w=weekObj(),cell=((w['d'+d]||{})[stid])||[];
+  const k=wkKey(cur),cons=S.constr[k]||{};
+  let items=S.emps.map(e=>{
+    const already=cell.includes(e.id);
+    const blocked=(cons[e.id]||[]).includes(d);
+    const elsewhere=S.stypes.some(st=>st.id!==stid && (((w['d'+d]||{})[st.id])||[]).includes(e.id));
+    let reason=already?'כבר משובץ':blocked?'אילוץ – לא זמין':elsewhere?'משובץ במשמרת אחרת':'';
+    return {e,dis:!!reason&&!already,already,reason};
+  });
+  const html=`<h3>שיבוץ – ${DAYS[d]} · ${S.stypes.find(s=>s.id===stid).name}</h3>
+    <p class="hint">בחר עובד לשיבוץ. עובדים חסומים מסומנים.</p>
+    <div class="pickgrid">${items.map(it=>`
+      <div class="pickitem${it.dis?' dis':''}" ${it.dis?'':`onclick="assign(${d},'${stid}','${it.e.id}')"`}>
+        <span class="ava" style="width:32px;height:32px;font-size:13px;background:${it.e.color}">${initials(it.e.name)}</span>
+        <div style="min-width:0;flex:1"><b style="display:block;font-size:14px">${it.e.name}${it.already?' ✓':''}</b>
+        ${it.reason?`<span class="rsn">${it.reason}</span>`:`<span class="hint">${it.e.role||'עובד'}</span>`}</div>
+      </div>`).join('')}</div>`;
+  openSheet(html);
+}
+function assign(d,stid,eid){
+  const w=weekObj();if(!w['d'+d])w['d'+d]={};if(!w['d'+d][stid])w['d'+d][stid]=[];
+  if(!w['d'+d][stid].includes(eid))w['d'+d][stid].push(eid);
+  save();closeSheet();renderBoard();toast(emp(eid).name+' שובץ');
+}
+function unassign(d,stid,eid){
+  const w=weekObj();if(w['d'+d]&&w['d'+d][stid])w['d'+d][stid]=w['d'+d][stid].filter(x=>x!==eid);
+  save();renderBoard();
+}
+function togglePublish(){const w=weekObj();w.published=!w.published;save();renderBoard();toast(w.published?'הסידור פורסם ✓':'הפרסום בוטל')}
+
+/* ============ EMPLOYEES ============ */
+function initials(n){const p=n.trim().split(/\s+/);return (p[0][0]||'')+(p[1]?p[1][0]:'')}
+function renderEmps(){
+  const l=$('#empList');l.innerHTML='';
+  if(!S.emps.length){l.appendChild(el('div','empty','<div class="ic">🧑‍🍳</div>אין עדיין עובדים.<br>הוסף את הצוות שלך.'));return}
+  S.emps.forEach(e=>{
+    const cnt=countEmpWeek(e.id),hrs=empHoursWeek(e.id);
+    const row=el('div','emp');
+    row.innerHTML=`<span class="ava" style="background:${e.color}">${initials(e.name)}</span>
+      <div class="info"><b>${e.name}</b><span>${e.role||'עובד'} · עד ${e.maxWeek||'∞'} משמרות</span></div>
+      <div class="stat"><b>${cnt}</b>משמרות</div><div class="stat"><b>${hrs}</b>שעות</div>`;
+    row.onclick=()=>openEmp(e.id);
+    l.appendChild(row);
+  });
+}
+function openEmp(id){
+  const e=id?emp(id):{name:'',role:'',color:COLORS[S.emps.length%COLORS.length],maxWeek:6};
+  const html=`<h3>${id?'עריכת עובד':'עובד חדש'}</h3>
+    <div class="field"><label>שם</label><input class="input" id="e_name" value="${e.name}" placeholder="שם מלא"></div>
+    <div class="field"><label>תפקיד</label><input class="input" id="e_role" value="${e.role||''}" placeholder="מלצר / טבח / קופאי…"></div>
+    <div class="field"><label>מקסימום משמרות בשבוע</label><input class="input" id="e_max" type="number" min="0" max="21" value="${e.maxWeek||6}"></div>
+    <div class="field"><label>צבע</label><div class="colorpick" id="e_colors">${COLORS.map(c=>`<button class="c${c===e.color?' sel':''}" style="background:${c}" onclick="selColor('${c}')"></button>`).join('')}</div></div>
+    <input type="hidden" id="e_color" value="${e.color}">
+    <div class="row-btns" style="margin-top:4px">
+      <button class="btn block" onclick="saveEmp('${id||''}')">שמירה</button>
+      ${id?`<button class="btn danger" style="flex:none" onclick="delEmp('${id}')">מחק</button>`:''}
+    </div>`;
+  openSheet(html);
+}
+function selColor(c){$('#e_color').value=c;document.querySelectorAll('#e_colors .c').forEach(b=>b.classList.toggle('sel',b.style.background===hexToRgbStr(c)))}
+function hexToRgbStr(hex){const n=parseInt(hex.slice(1),16);return `rgb(${n>>16&255}, ${n>>8&255}, ${n&255})`}
+function saveEmp(id){
+  const name=$('#e_name').value.trim();if(!name){toast('צריך שם');return}
+  const data={name,role:$('#e_role').value.trim(),color:$('#e_color').value,maxWeek:+$('#e_max').value||0};
+  if(id){Object.assign(emp(id),data)}else{S.emps.push({id:uid(),...data})}
+  save();closeSheet();renderEmps();renderBoard();toast('נשמר');
+}
+function delEmp(id){
+  S.emps=S.emps.filter(e=>e.id!==id);
+  Object.values(S.sched).forEach(w=>Object.keys(w).forEach(dk=>{if(dk[0]==='d')Object.keys(w[dk]).forEach(st=>w[dk][st]=w[dk][st].filter(x=>x!==id))}));
+  Object.values(S.constr).forEach(c=>delete c[id]);
+  save();closeSheet();renderEmps();renderBoard();toast('העובד נמחק');
+}
+function countEmpWeek(id){const w=weekObj();let n=0;for(let d=0;d<7;d++)S.stypes.forEach(st=>{if((((w['d'+d]||{})[st.id])||[]).includes(id))n++});return n}
+function empHoursWeek(id){const w=weekObj();let h=0;for(let d=0;d<7;d++)S.stypes.forEach(st=>{if((((w['d'+d]||{})[st.id])||[]).includes(id))h+=hoursOf(st)});return Math.round(h)}
+
+/* ============ CONSTRAINTS ============ */
+function renderConstraints(){
+  renderBoard();
+  const host=$('#constrList');host.innerHTML='';
+  if(!S.emps.length){host.appendChild(el('div','empty','<div class="ic">📋</div>הוסף עובדים כדי להגדיר אילוצים.'));return}
+  const k=wkKey(cur);if(!S.constr[k])S.constr[k]={};
+  S.emps.forEach(e=>{
+    const off=S.constr[k][e.id]||[];
+    const card=el('div','sec-card');
+    card.innerHTML=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+      <span class="ava" style="width:30px;height:30px;font-size:12px;background:${e.color}">${initials(e.name)}</span>
+      <b>${e.name}</b><span class="hint" style="margin-inline-start:auto">${off.length?off.length+' ימים חסומים':'זמין כל השבוע'}</span></div>`;
+    const grid=el('div','cweek');
+    for(let d=0;d<7;d++){
+      const isOff=off.includes(d);
+      const cell=el('div','cday'+(isOff?' off':''),`${DAYS[d].slice(0,1)}<span class="dnum">${addDays(cur,d).getDate()}</span>`);
+      cell.onclick=()=>{const arr=S.constr[k][e.id]||(S.constr[k][e.id]=[]);const i=arr.indexOf(d);if(i<0)arr.push(d);else arr.splice(i,1);save();renderConstraints()};
+      grid.appendChild(cell);
+    }
+    card.appendChild(grid);host.appendChild(card);
+  });
+}
+
+/* ============ SUMMARY ============ */
+function renderSummary(){
+  renderBoard();
+  const w=weekObj();
+  let totalShifts=0,totalHours=0;const per={};
+  S.emps.forEach(e=>per[e.id]={s:0,h:0});
+  const gaps=[];
+  for(let d=0;d<7;d++)S.stypes.forEach(st=>{
+    const a=(((w['d'+d]||{})[st.id])||[]);
+    totalShifts+=a.length;a.forEach(id=>{if(per[id]){per[id].s++;per[id].h+=hoursOf(st);totalHours+=hoursOf(st)}});
+    if(a.length<S.minCov)gaps.push({d,st,miss:S.minCov-a.length});
+  });
+  $('#statGrid').innerHTML=`
+    <div class="statbox"><div class="v">${totalShifts}</div><div class="l">משמרות שובצו</div></div>
+    <div class="statbox"><div class="v">${Math.round(totalHours)}</div><div class="l">סה״כ שעות</div></div>
+    <div class="statbox"><div class="v" style="color:${gaps.length?'var(--bad)':'var(--ok)'}">${gaps.length}</div><div class="l">חוסרים</div></div>`;
+  const maxH=Math.max(1,...Object.values(per).map(p=>p.h));
+  const hl=$('#hoursList');hl.innerHTML='';
+  if(!S.emps.length){hl.innerHTML='<p class="hint">אין עובדים.</p>'}
+  S.emps.forEach(e=>{
+    const p=per[e.id];
+    const r=el('div','hoursrow');
+    r.innerHTML=`<span class="ava" style="width:32px;height:32px;font-size:13px;background:${e.color}">${initials(e.name)}</span>
+      <div style="min-width:70px"><b>${e.name}</b><div class="hint">${p.s} משמרות</div></div>
+      <div class="barwrap"><div class="track"><div class="fill" style="width:${p.h/maxH*100}%;background:${e.color}"></div></div></div>
+      <div class="hv">${Math.round(p.h)} ש׳</div>`;
+    hl.appendChild(r);
+  });
+  const gc=$('#gapsCard'),gl=$('#gapsList');
+  if(gaps.length){gc.style.display='';gl.innerHTML=gaps.map(g=>`<div class="hoursrow" style="gap:8px"><span class="need" style="align-self:center">חסר ${g.miss}</span><div style="flex:1"><b>${DAYS[g.d]}</b> · ${g.st.name} <span class="hint">(${g.st.start}–${g.st.end})</span></div></div>`).join('')}
+  else gc.style.display='none';
+}
+function shareSchedule(){
+  const w=weekObj();let txt=`📅 סידור עבודה · ${S.biz}\n${fmtDM(cur)}–${fmtDM(addDays(cur,6))}\n`;
+  for(let d=0;d<7;d++){let any=false,lines='';
+    S.stypes.forEach(st=>{const a=(((w['d'+d]||{})[st.id])||[]).map(id=>emp(id)?.name).filter(Boolean);
+      if(a.length){any=true;lines+=`  ${st.name}: ${a.join(', ')}\n`}});
+    if(any)txt+=`\n*${DAYS[d]} ${fmtDM(addDays(cur,d))}*\n`+lines;}
+  if(navigator.share)navigator.share({title:'סידור עבודה',text:txt}).catch(()=>{});
+  else{navigator.clipboard?.writeText(txt);toast('הסידור הועתק ✓')}
+}
+
+/* ============ SETTINGS ============ */
+function renderSettings(){
+  $('#bizName').value=S.biz;$('#minCov').value=S.minCov;
+  const l=$('#stypeList');l.innerHTML='';
+  S.stypes.forEach(st=>{
+    const row=el('div','stype');
+    row.innerHTML=`<span class="sw" style="background:${st.color}"></span>
+      <input class="input" style="flex:1;padding:8px 10px" value="${st.name}" onchange="updStype('${st.id}','name',this.value)">
+      <input class="timeinput" value="${st.start}" onchange="updStype('${st.id}','start',this.value)">
+      <input class="timeinput" value="${st.end}" onchange="updStype('${st.id}','end',this.value)">
+      <button class="iconbtn" style="width:32px;height:32px" onclick="delStype('${st.id}')">🗑</button>`;
+    l.appendChild(row);
+  });
+}
+function setBiz(v){S.biz=v||'הסידור שלי';$('#brandName').textContent=S.biz;$('#brandDot').textContent=S.biz.trim()[0]||'ס';save()}
+function setMinCov(v){S.minCov=Math.max(0,+v||0);save();renderBoard()}
+function updStype(id,f,v){const st=S.stypes.find(s=>s.id===id);if(st){st[f]=v;save();renderBoard()}}
+function delStype(id){if(S.stypes.length<=1){toast('חייב סוג משמרת אחד לפחות');return}S.stypes=S.stypes.filter(s=>s.id!==id);Object.values(S.sched).forEach(w=>Object.keys(w).forEach(dk=>{if(dk[0]==='d')delete w[dk][id]}));save();renderSettings();renderBoard()}
+function addShiftType(){S.stypes.push({id:uid(),name:'משמרת',start:'09:00',end:'17:00',color:COLORS[S.stypes.length%COLORS.length]});save();renderSettings();renderBoard()}
+
+/* ============ data ops ============ */
+function exportData(){const blob=new Blob([JSON.stringify(S,null,2)],{type:'application/json'});const u=URL.createObjectURL(blob);const a=el('a');a.href=u;a.download='sidur-backup.json';a.click();URL.revokeObjectURL(u)}
+function seedDemo(){
+  const names=[['יוסי כהן','מלצר'],['דנה לוי','ברמנית'],['עומר אבו','טבח'],['שירה רז','קופאית'],['נועם בר','מלצר'],['ליה גל','מנהלת משמרת']];
+  S.emps=names.map((n,i)=>({id:uid(),name:n[0],role:n[1],color:COLORS[i%COLORS.length],maxWeek:5}));
+  const w=weekObj();for(let d=0;d<6;d++){w['d'+d]={};S.stypes.forEach((st,si)=>{w['d'+d][st.id]=S.emps.slice((d+si)%4,(d+si)%4+2).map(e=>e.id)})}
+  save();renderAll();go('board');toast('נטענו נתוני דוגמה');
+}
+function wipeAll(){openSheet(`<h3>איפוס מלא?</h3><p class="muted">כל העובדים, הסידורים והאילוצים יימחקו מהמכשיר. אי אפשר לבטל.</p>
+  <div class="row-btns" style="margin-top:14px"><button class="btn block ghost" onclick="closeSheet()">ביטול</button><button class="btn block danger" onclick="S=DEFAULT();save();closeSheet();renderAll();go('board');toast('אופס')">מחק הכל</button></div>`)}
+
+/* ============ theme ============ */
+function applyTheme(){const t=S.theme;document.documentElement.setAttribute('data-theme',t==='auto'?'':t);$('#themeBtn').textContent=t==='dark'?'☀':t==='light'?'☾':'◐'}
+$('#themeBtn').onclick=()=>{S.theme=S.theme==='auto'?'light':S.theme==='light'?'dark':'auto';save();applyTheme();toast(S.theme==='auto'?'אוטומטי':S.theme==='dark'?'כהה':'בהיר')};
+
+/* ============ boot ============ */
+function renderAll(){renderBoard();
+  const on=document.querySelector('.screen.on').id.replace('sc-','');
+  if(on==='emps')renderEmps();if(on==='constraints')renderConstraints();if(on==='summary')renderSummary();if(on==='settings')renderSettings();
+}
+function boot(){
+  setBiz(S.biz);applyTheme();renderBoard();
+  if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+boot();
+</script>
+</body>
+</html>
