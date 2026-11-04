@@ -183,15 +183,11 @@ body.readonly .addslot,body.readonly .chip .x,body.readonly #pubBtn,body.readonl
     <h2>סידור · כניסה</h2>
     <p class="hint" id="gateMsg">הסידור פרטי. רק אנשים שהמנהל אישר יכולים לראות אותו.</p>
     <div id="gateLogin">
-      <button class="btn block" onclick="loginGoogle()">כניסה עם Google</button>
-      <div class="gate-or">או עם מייל וסיסמה</div>
-      <input class="input" id="gEmail" type="email" dir="ltr" placeholder="name@example.com" autocomplete="email">
-      <input class="input" id="gPass" type="password" dir="ltr" placeholder="סיסמה, 6 תווים לפחות" autocomplete="current-password" style="margin-top:8px">
-      <div class="row-btns" style="margin-top:10px">
-        <button class="btn block ghost" onclick="loginEmail()">כניסה</button>
-        <button class="btn block ghost" onclick="signupEmail()">הרשמה</button>
-      </div>
-      <button class="linkbtn" onclick="resetPass()">שכחתי סיסמה</button>
+      <input class="input" id="gName" type="text" placeholder="שם משתמש" autocomplete="username" autocapitalize="off">
+      <input class="input" id="gPass" type="password" dir="ltr" placeholder="סיסמה" autocomplete="current-password" style="margin-top:8px" onkeydown="if(event.key==='Enter')loginName()">
+      <button class="btn block" style="margin-top:10px" onclick="loginName()">כניסה</button>
+      <p class="hint" style="margin:12px 0 0">שכחת סיסמה או אין לך משתמש? פנה למנהל.</p>
+      <button class="linkbtn" onclick="loginGoogle()">כניסת מנהל</button>
     </div>
     <div id="gateWait" style="display:none">
       <p id="gateWaitMsg" style="line-height:1.6"></p>
@@ -295,14 +291,15 @@ body.readonly .addslot,body.readonly .chip .x,body.readonly #pubBtn,body.readonl
         <button class="btn sm ghost" onclick="logout()">התנתקות</button>
       </div>
       <div class="sec-card" id="accessCard" style="display:none">
-        <h3>🔒 מי יכול לראות את הסידור</h3>
-        <p class="hint" style="margin-top:0">רק אנשים ברשימה נכנסים. <b>עורך</b> יכול לשנות, <b>צופה</b> רק רואה. הוסף את המייל שאיתו הם מתחברים.</p>
+        <h3>🔒 משתמשים והרשאות</h3>
+        <p class="hint" style="margin-top:0">רק משתמשים שאתה יוצר כאן נכנסים. <b>עורך</b> יכול לשנות, <b>צופה</b> רק רואה. מסור לכל אחד את השם והסיסמה שבחרת.</p>
         <div id="accessList"></div>
-        <div style="display:flex;gap:8px;margin-top:10px">
-          <input class="input" id="accEmail" type="email" dir="ltr" placeholder="name@gmail.com" style="flex:1;min-width:0">
+        <input class="input" id="accName" type="text" placeholder="שם משתמש (למשל: מלסה)" style="margin-top:10px" autocapitalize="off">
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <input class="input" id="accPass" type="text" dir="ltr" placeholder="סיסמה, 6+ תווים" style="flex:1;min-width:0" autocomplete="new-password">
           <select class="input" id="accRole" style="width:auto;flex:none"><option value="viewer">צופה</option><option value="editor">עורך</option></select>
         </div>
-        <button class="btn sm" style="margin-top:8px" onclick="addAccess()">הוסף גישה</button>
+        <button class="btn sm" style="margin-top:8px" onclick="addUser()">צור משתמש</button>
       </div>
       <div class="sec-card">
         <h3>נתונים</h3>
@@ -394,7 +391,7 @@ function initCloud(){
     if(err.code==='permission-denied'){
       try{localStorage.removeItem(KEY)}catch(e){}
       const th=S.theme;S=DEFAULT();S.theme=th;renderAll();
-      showWait(`אין לך עדיין גישה לסידור.<br>בקש מהמנהל להוסיף את:<br><b dir="ltr">${(USER&&USER.email)||''}</b>`);
+      showWait(`אין לך עדיין גישה לסידור.<br>פנה למנהל.<br><b>${displayName()}</b>`);
     } else toast('אין חיבור לענן כרגע');
   });
 }
@@ -410,14 +407,19 @@ async function resolveRole(){
 function showGate(){$('#authGate').classList.remove('hidden');$('#gateLogin').style.display='';$('#gateWait').style.display='none'}
 function showWait(html){$('#authGate').classList.remove('hidden');$('#gateLogin').style.display='none';$('#gateWait').style.display='';$('#gateWaitMsg').innerHTML=html}
 function hideGate(){$('#authGate').classList.add('hidden');$('#gateErr').textContent=''}
-function gateErr(e){const m={'auth/invalid-credential':'מייל או סיסמה שגויים','auth/wrong-password':'סיסמה שגויה','auth/user-not-found':'אין משתמש עם המייל הזה','auth/email-already-in-use':'המייל כבר רשום, לחץ "כניסה"','auth/weak-password':'סיסמה קצרה מדי (6 תווים לפחות)','auth/invalid-email':'כתובת מייל לא תקינה','auth/missing-password':'צריך סיסמה','auth/popup-closed-by-user':'החלון נסגר לפני שהכניסה הסתיימה','auth/operation-not-allowed':'שיטת הכניסה הזו עוד לא הופעלה','auth/unauthorized-domain':'הכתובת עוד לא מאושרת ב-Firebase','auth/network-request-failed':'אין חיבור לאינטרנט','auth/too-many-requests':'יותר מדי ניסיונות, נסה שוב בעוד כמה דקות'};$('#gateErr').textContent=m[e&&e.code]||('שגיאה: '+((e&&(e.code||e.message))||''))}
+function gateErr(e){const m={'name-bad':'שם משתמש או סיסמה שגויים','auth/invalid-credential':'מייל או סיסמה שגויים','auth/wrong-password':'סיסמה שגויה','auth/user-not-found':'אין משתמש עם המייל הזה','auth/email-already-in-use':'המייל כבר רשום, לחץ "כניסה"','auth/weak-password':'סיסמה קצרה מדי (6 תווים לפחות)','auth/invalid-email':'כתובת מייל לא תקינה','auth/missing-password':'צריך סיסמה','auth/popup-closed-by-user':'החלון נסגר לפני שהכניסה הסתיימה','auth/operation-not-allowed':'שיטת הכניסה הזו עוד לא הופעלה','auth/unauthorized-domain':'הכתובת עוד לא מאושרת ב-Firebase','auth/network-request-failed':'אין חיבור לאינטרנט','auth/too-many-requests':'יותר מדי ניסיונות, נסה שוב בעוד כמה דקות'};$('#gateErr').textContent=m[e&&e.code]||('שגיאה: '+((e&&(e.code||e.message))||''))}
 async function loginGoogle(){$('#gateErr').textContent='';const p=new firebase.auth.GoogleAuthProvider();p.setCustomParameters({prompt:'select_account'});
   try{await firebase.auth().signInWithPopup(p)}catch(e){
     if(e.code==='auth/popup-blocked'||e.code==='auth/operation-not-supported-in-this-environment'){try{await firebase.auth().signInWithRedirect(p)}catch(e2){gateErr(e2)}}else gateErr(e)}}
-const creds=()=>[$('#gEmail').value.trim(),$('#gPass').value];
-async function loginEmail(){$('#gateErr').textContent='';const[e,p]=creds();try{await firebase.auth().signInWithEmailAndPassword(e,p)}catch(x){gateErr(x)}}
-async function signupEmail(){$('#gateErr').textContent='';const[e,p]=creds();try{const c=await firebase.auth().createUserWithEmailAndPassword(e,p);await c.user.sendEmailVerification();onUser(c.user)}catch(x){gateErr(x)}}
-async function resetPass(){const e=$('#gEmail').value.trim();if(!e){$('#gateErr').textContent='כתוב קודם את המייל';return}try{await firebase.auth().sendPasswordResetEmail(e);$('#gateErr').textContent='נשלח מייל לאיפוס סיסמה'}catch(x){gateErr(x)}}
+/* username login: Firebase needs an email, so each name maps to a private internal address
+   (hex of the UTF-8 name, so Hebrew names work). No mail is ever sent to it. */
+const USER_DOMAIN='@users.sidur.invalid';
+const normName=n=>n.trim().replace(/\s+/g,' ').toLowerCase();
+const name2email=n=>'u'+[...new TextEncoder().encode(normName(n))].map(b=>b.toString(16).padStart(2,'0')).join('')+USER_DOMAIN;
+const email2name=e=>{if(!e||!e.endsWith(USER_DOMAIN))return null;const h=e.slice(1,-USER_DOMAIN.length);return new TextDecoder().decode(new Uint8Array(h.match(/../g).map(x=>parseInt(x,16))))};
+async function loginName(){$('#gateErr').textContent='';const n=$('#gName').value,p=$('#gPass').value;
+  if(!normName(n)){$('#gateErr').textContent='כתוב שם משתמש';return}
+  try{await firebase.auth().signInWithEmailAndPassword(name2email(n),p)}catch(x){gateErr(x.code==='auth/invalid-credential'||x.code==='auth/user-not-found'||x.code==='auth/wrong-password'?{code:'name-bad'}:x)}}
 async function recheckAccess(){const u=firebase.auth().currentUser;if(!u)return showGate();try{await u.reload();await u.getIdToken(true)}catch(e){}onUser(firebase.auth().currentUser)}
 async function logout(){if(unsub){unsub();unsub=null}cloudDoc=null;LAST_CLOUD=null;CAN_EDIT=false;IS_OWNER=false;
   try{localStorage.removeItem(KEY)}catch(e){}const th=S.theme;S=DEFAULT();S.theme=th;renderAll();setCloudBadge(false);
@@ -425,8 +427,6 @@ async function logout(){if(unsub){unsub();unsub=null}cloudDoc=null;LAST_CLOUD=nu
 async function onUser(u){
   USER=u;
   if(!u){if(unsub){unsub();unsub=null}cloudDoc=null;setCloudBadge(false);showGate();return}
-  if(u.providerData.some(p=>p.providerId==='password')&&!u.emailVerified){
-    showWait(`שלחנו מייל אימות ל-<b dir="ltr">${u.email}</b>.<br>לחץ על הקישור במייל, ואז על "בדוק שוב".`);return}
   await resolveRole();
   hideGate();   // show this device's last synced copy right away (works offline); the cloud replaces it
   initCloud();
@@ -436,15 +436,31 @@ async function onUser(u){
 async function loadAccess(){const box=$('#accessList');box.innerHTML='<p class="hint">טוען…</p>';
   try{const qs=await firebase.firestore().collection('sidur_access').get();box.innerHTML='';
     if(qs.empty){box.innerHTML='<p class="hint">עוד לא הוספת אף אחד. כרגע רק אתה רואה את הסידור.</p>';return}
-    qs.forEach(d=>{const r=el('div','acc-row');const em=el('span','em');em.textContent=d.id;r.appendChild(em);
+    qs.forEach(d=>{const r=el('div','acc-row');const em=el('span','em');em.style.direction='rtl';em.textContent=d.data().name||email2name(d.id)||d.id;r.appendChild(em);
       r.appendChild(el('span','acc-role',d.data().role==='editor'?'עורך':'צופה'));
       const b=el('button','iconbtn','✕');b.style.cssText='width:30px;height:30px';b.title='הסר גישה';b.onclick=()=>removeAccess(d.id);r.appendChild(b);box.appendChild(r)})
   }catch(e){box.innerHTML='<p class="hint">אין לך הרשאה לנהל גישה.</p>'}}
-async function addAccess(){const em=$('#accEmail').value.trim().toLowerCase();
-  if(!/^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}$/.test(em)){toast('כתובת מייל לא תקינה');return}
-  try{await firebase.firestore().collection('sidur_access').doc(em).set({role:$('#accRole').value,added:Date.now()});$('#accEmail').value='';toast('נוסף: '+em);loadAccess()}catch(e){toast('לא הצלחתי להוסיף')}}
-async function removeAccess(em){try{await firebase.firestore().collection('sidur_access').doc(em).delete();toast('הוסר: '+em);loadAccess()}catch(e){toast('לא הצלחתי להסיר')}}
-function renderAccount(){const w=$('#whoami');if(w)w.innerHTML=USER?`מחובר כ-<b dir="ltr">${USER.email}</b> · ${IS_OWNER?'מנהל':CAN_EDIT?'עורך':'צופה'}`:'';
+/* owner creates the account on a separate Firebase instance, so the owner stays signed in */
+async function addUser(){
+  const n=$('#accName').value,p=$('#accPass').value,role=$('#accRole').value,nn=normName(n);
+  if(!nn){toast('כתוב שם משתמש');return}
+  if(p.length<6){toast('סיסמה של 6 תווים לפחות');return}
+  const em=name2email(n);
+  try{
+    const sec=firebase.apps.find(a=>a.name==='creator')||firebase.initializeApp(FB_CONFIG,'creator');
+    const a=sec.auth();await a.setPersistence(firebase.auth.Auth.Persistence.NONE);
+    await a.createUserWithEmailAndPassword(em,p);await a.signOut();
+  }catch(e){
+    if(e.code==='auth/email-already-in-use')toast('השם הזה כבר תפוס, בחר שם אחר');
+    else if(e.code==='auth/weak-password')toast('סיסמה חלשה מדי');
+    else toast('לא הצלחתי ליצור משתמש ('+(e.code||'')+')');
+    return}
+  try{await firebase.firestore().collection('sidur_access').doc(em).set({role,name:nn,added:Date.now()});
+    $('#accName').value='';$('#accPass').value='';toast('נוצר משתמש: '+nn);loadAccess()}
+  catch(e){toast('המשתמש נוצר אבל לא קיבל גישה, נסה שוב')}}
+async function removeAccess(em){const nm=email2name(em)||em;try{await firebase.firestore().collection('sidur_access').doc(em).delete();toast('הגישה הוסרה: '+nm);loadAccess()}catch(e){toast('לא הצלחתי להסיר')}}
+function displayName(){return USER?(email2name(USER.email)||USER.email||''):''}
+function renderAccount(){const w=$('#whoami');if(w){w.textContent='';if(USER){w.append('מחובר כ: ');const b=el('b');b.textContent=displayName();w.append(b,' · '+(IS_OWNER?'מנהל':CAN_EDIT?'עורך':'צופה'))}}
   const c=$('#accessCard');if(c){c.style.display=IS_OWNER?'':'none';if(IS_OWNER)loadAccess()}}
 function pushCloud(){
   if(!cloudDoc||!CAN_EDIT)return;
