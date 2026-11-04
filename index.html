@@ -613,7 +613,7 @@ function renderBoard(){
     g.appendChild(el('div','wg-h'+(d===today?' today':''),`${DAYL[d]}<b>${date.getDate()}</b><span class="cv" style="background:${full?'var(--ok)':a?'var(--warn)':'var(--line)'}"></span>`));
   }
   S.stypes.forEach(st=>{
-    g.appendChild(el('div','wg-st',`${esc(st.name)}<small>${st.start}–${st.end}</small><i style="background:${st.color}"></i>`));
+    g.appendChild(el('div','wg-st',`${esc(st.name)}<small>${shortT(st.start)}–${shortT(st.end)}</small><i style="background:${st.color}"></i>`));
     for(let d=0;d<7;d++){
       const ids=((((w['d'+d]||{})[st.id])||[])).filter(id=>emp(id));
       const c=el('div','wg-c'+(d===today?' today':'')+(need&&ids.length<need?' short':''));
@@ -655,6 +655,7 @@ function pickEmployee(d,stid){
   openSheet(html);
 }
 const DAYL=['א','ב','ג','ד','ה','ו','ש'];
+const shortT=t=>t.endsWith(':00')?t.slice(0,2):t;  // 07:00 → 07, keeps 06:45
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function openCell(d,stid){
   const w=weekObj(),st=S.stypes.find(s=>s.id===stid),date=addDays(cur,d);
