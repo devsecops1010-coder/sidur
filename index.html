@@ -131,7 +131,7 @@ h2.page{font-size:22px;font-weight:800;margin:4px 0 14px;letter-spacing:-.02em}
 .sec-card h3{margin:0 0 10px;font-size:15px}
 /* tabbar */
 .tabbar{position:fixed;bottom:0;inset-inline:0;z-index:40;background:var(--card);border-top:1px solid var(--line);
-  display:grid;grid-template-columns:repeat(5,1fr);padding-bottom:var(--safe-b);max-width:760px;margin:0 auto;left:0;right:0}
+  display:grid;grid-template-columns:repeat(6,1fr);padding-bottom:var(--safe-b);max-width:760px;margin:0 auto;left:0;right:0}
 .tab{background:none;border:none;padding:8px 0 7px;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--txt3);font-size:11px;font-weight:600}
 .tab svg{width:23px;height:23px;stroke:currentColor;fill:none;stroke-width:1.9}
 .tab.active{color:var(--accent)}
@@ -174,6 +174,45 @@ body.readonly .addslot,body.readonly .chip .x,body.readonly #pubBtn,body.readonl
 .acc-row{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}
 .acc-row .em{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;direction:ltr;text-align:start}
 .acc-role{font-size:12px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--accent-soft);color:var(--accent)}
+/* weekly grid board */
+.wgrid{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);overflow:hidden}
+.wg{display:grid;grid-template-columns:54px repeat(7,minmax(0,1fr))}
+.wg-h{padding:8px 0 6px;text-align:center;font-size:11px;color:var(--txt2);border-bottom:1px solid var(--line)}
+.wg-h b{display:block;font-size:15px;color:var(--txt);margin-top:1px;font-variant-numeric:tabular-nums}
+.wg-h.today{background:var(--accent-soft);color:var(--accent)}.wg-h.today b{color:var(--accent)}
+.wg-h .cv{display:block;width:6px;height:6px;border-radius:50%;margin:4px auto 0}
+.wg-st{padding:8px 4px 8px 6px;border-top:1px solid var(--line);font-size:12px;font-weight:700;display:flex;flex-direction:column;justify-content:center;gap:1px}
+.wg-st small{font-weight:500;color:var(--txt3);font-size:10px;font-variant-numeric:tabular-nums;direction:ltr;text-align:right}
+.wg-st i{display:block;height:3px;border-radius:2px;width:22px;margin-top:3px}
+.wg-c{position:relative;border-top:1px solid var(--line);border-inline-start:1px solid var(--line);min-height:62px;padding:5px 2px 3px;display:flex;flex-direction:column;gap:3px;cursor:pointer}
+.wg-c.today{background:color-mix(in srgb,var(--accent-soft) 55%,transparent)}
+.wg-c:active{background:var(--card2)}
+.wg-c.short::before{content:'';position:absolute;top:4px;inset-inline-end:4px;width:5px;height:5px;border-radius:50%;background:var(--bad);opacity:.7}
+.wg-n{font-size:11px;font-weight:700;border-radius:6px;padding:3px 2px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2;
+  background:color-mix(in srgb,var(--c) 18%,transparent);color:color-mix(in srgb,var(--c) 55%,#000)}
+.wg-n small{display:block;font-size:9px;font-weight:600;opacity:.85;direction:ltr}
+.wg-add{color:var(--txt3);text-align:center;font-size:15px;line-height:1;margin-top:auto;opacity:.6}
+body.readonly .wg-add{display:none}
+.wg-foot{padding:9px 12px;border-top:1px solid var(--line);font-size:12px;color:var(--txt3)}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]) .wg-n{color:color-mix(in srgb,var(--c) 65%,#fff)}}
+:root[data-theme=dark] .wg-n{color:color-mix(in srgb,var(--c) 65%,#fff)}
+/* "my shifts" */
+.mine-hero{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;box-shadow:var(--shadow);margin-bottom:12px}
+.mine-hero .lbl{font-size:13px;color:var(--txt2)}
+.mine-hero .big{font-size:26px;font-weight:800;letter-spacing:-.02em;margin-top:2px}
+.mine-hero .tm{font-size:16px;color:var(--txt2);direction:ltr;text-align:right;font-variant-numeric:tabular-nums}
+.mine-hero .now{display:inline-block;background:var(--ok-soft);color:var(--ok);font-size:12px;font-weight:700;padding:2px 9px;border-radius:999px;margin-top:6px}
+.mine-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:12px}
+.mine-stats div{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px}
+.mine-stats span{font-size:12px;color:var(--txt2)}.mine-stats b{display:block;font-size:22px;font-variant-numeric:tabular-nums}
+.mine-list{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:var(--shadow)}
+.mine-month{padding:9px 14px;font-size:12px;font-weight:700;color:var(--txt2);background:var(--card2);border-top:1px solid var(--line)}
+.mine-month:first-child{border-top:none}
+.mine-row{display:flex;align-items:center;gap:10px;padding:11px 14px;border-top:1px solid var(--line)}
+.mine-row .dt{min-width:72px}.mine-row .dt b{display:block}.mine-row .dt span{font-size:12px;color:var(--txt3)}
+.mine-row .sh{flex:1;font-weight:600}.mine-row .tt{color:var(--txt2);direction:ltr;font-variant-numeric:tabular-nums;font-size:14px}
+.mine-row.past{opacity:.45}
+.mine-row .bar{width:4px;align-self:stretch;border-radius:2px}
 /* install-to-home-screen */
 .install-bar{display:flex;align-items:center;gap:10px;background:var(--accent-soft);border:1px solid var(--accent);border-radius:14px;padding:10px 12px;margin-bottom:12px;font-size:13px;line-height:1.5}
 .install-bar .ib-ic{font-size:20px;flex:none}.install-bar .ib-t{flex:1;min-width:0}
@@ -228,6 +267,11 @@ body.readonly .addslot,body.readonly .chip .x,body.readonly #pubBtn,body.readonl
       </div>
       <div class="board" id="board"></div>
     </div>
+  </section>
+
+  <!-- MY SHIFTS (employee view) -->
+  <section class="screen" id="sc-mine">
+    <div class="wrap"><div id="mineBody"></div></div>
   </section>
 
   <!-- EMPLOYEES -->
@@ -325,6 +369,8 @@ body.readonly .addslot,body.readonly .chip .x,body.readonly #pubBtn,body.readonl
 
 <!-- tab bar -->
 <nav class="tabbar">
+  <button class="tab" data-sc="mine" onclick="go('mine')" style="display:none">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="7.5" r="3.5"/><path d="M5 20.5a7 7 0 0114 0"/></svg>שלי</button>
   <button class="tab active" data-sc="board" onclick="go('board')">
     <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>לוח</button>
   <button class="tab" data-sc="emps" onclick="go('emps')">
@@ -449,8 +495,10 @@ async function onUser(u){
   USER=u;
   if(!u){if(unsub){unsub();unsub=null}cloudDoc=null;setCloudBadge(false);showGate();return}
   await resolveRole();
+  LANDED=false;MINE_PREVIEW=null;
   hideGate();   // show this device's last synced copy right away (works offline); the cloud replaces it
   initCloud();
+  renderAll();
   if(document.querySelector('#sc-settings.on'))renderSettings();
 }
 /* ---- owner: access list ---- */
@@ -530,6 +578,7 @@ function go(sc){
   $('#sc-'+sc).classList.add('on');
   document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.sc===sc));
   window.scrollTo(0,0);
+  if(sc==='mine')renderMine();
   if(sc==='emps')renderEmps();
   if(sc==='constraints')renderConstraints();
   if(sc==='summary')renderSummary();
@@ -554,41 +603,32 @@ function renderBoard(){
   $('#pubBtn').textContent=pub?'בטל פרסום':'פרסם סידור';
   const b=$('#board');b.innerHTML='';
   if(!S.emps.length){b.appendChild(el('div','empty','<div class="ic">👥</div>אין עדיין עובדים.<br>הוסף עובדים כדי לשבץ משמרות.'));return}
+  /* weekly grid: rows = shift types, columns = days (like the paper/Excel roster) */
+  const need=S.minCov||0,wg=el('div','wgrid'),g=el('div','wg');
+  g.appendChild(el('div','wg-h wg-corner',''));
   for(let d=0;d<7;d++){
-    const card=el('div','daycard');
-    const hdr=el('div','dayhdr'+(d===today?' today':''));
-    const date=addDays(cur,d);
-    hdr.innerHTML=`<span class="dn">${DAYS[d]}</span><span class="dd">${fmtDM(date)}</span>`;
-    let dayAssigned=0,dayNeed=0;
-    const rows=document.createDocumentFragment();
-    S.stypes.forEach(st=>{
-      const assigned=((w['d'+d]||{})[st.id])||[];
-      dayAssigned+=assigned.length;dayNeed+=S.minCov;
-      const row=el('div','shiftrow');
-      row.innerHTML=`<div class="stag"><div class="nm">${st.name}</div><div class="tm">${st.start}–${st.end}</div><div class="bar" style="background:${st.color}"></div></div>`;
-      const slots=el('div','slots');
-      assigned.forEach(eid=>{
-        const e=emp(eid);if(!e)return;
-        const tf=timesFor(st,e);
-        const chip=el('span','chip',`${e.name}${tf.own?`<small style="opacity:.75;font-weight:500;direction:ltr">${tf.start}–${tf.end}</small>`:''}<span class="x">✕</span>`);
-        chip.style.background=hex2soft(e.color);chip.style.color=e.color;chip.style.borderColor=hex2soft(e.color,.5);
-        chip.querySelector('.x').onclick=ev=>{ev.stopPropagation();unassign(d,st.id,eid)};
-        slots.appendChild(chip);
-      });
-      const add=el('button','addslot','+');
-      add.onclick=()=>pickEmployee(d,st.id);
-      slots.appendChild(add);
-      if(assigned.length<S.minCov)slots.appendChild(el('span','need','חסר '+(S.minCov-assigned.length)));
-      row.appendChild(slots);
-      rows.appendChild(row);
-    });
-    const covPct=dayNeed?Math.round(dayAssigned/dayNeed*100):100;
-    const cov=el('span','cov');cov.textContent=covPct+'%';
-    cov.style.background=covPct>=100?'var(--ok-soft)':covPct>=50?'var(--warn-soft)':'var(--bad-soft)';
-    cov.style.color=covPct>=100?'var(--ok)':covPct>=50?'var(--warn)':'var(--bad)';
-    hdr.appendChild(cov);
-    card.appendChild(hdr);card.appendChild(rows);b.appendChild(card);
+    const date=addDays(cur,d);let a=0;
+    S.stypes.forEach(st=>{a+=Math.min((((w['d'+d]||{})[st.id])||[]).length,need||1)});
+    const full=a>=(need||1)*S.stypes.length;
+    g.appendChild(el('div','wg-h'+(d===today?' today':''),`${DAYL[d]}<b>${date.getDate()}</b><span class="cv" style="background:${full?'var(--ok)':a?'var(--warn)':'var(--line)'}"></span>`));
   }
+  S.stypes.forEach(st=>{
+    g.appendChild(el('div','wg-st',`${esc(st.name)}<small>${st.start}–${st.end}</small><i style="background:${st.color}"></i>`));
+    for(let d=0;d<7;d++){
+      const ids=((((w['d'+d]||{})[st.id])||[])).filter(id=>emp(id));
+      const c=el('div','wg-c'+(d===today?' today':'')+(need&&ids.length<need?' short':''));
+      ids.forEach(id=>{const e=emp(id),tf=timesFor(st,e),n=el('div','wg-n');
+        n.style.setProperty('--c',e.color);n.textContent=e.name;
+        if(tf.own){const s=el('small');s.textContent=tf.start;n.appendChild(s)}
+        c.appendChild(n)});
+      c.appendChild(el('div','wg-add','+'));
+      c.onclick=()=>openCell(d,st.id);
+      g.appendChild(c);
+    }
+  });
+  wg.appendChild(g);
+  wg.appendChild(el('div','wg-foot',CAN_EDIT?'נגיעה במשבצת: שיבוץ או הסרה':'נגיעה במשבצת: מי במשמרת'));
+  b.appendChild(wg);
 }
 function weekNum(d){const o=new Date(d.getFullYear(),0,1);return Math.ceil(((d-o)/864e5+o.getDay()+1)/7)}
 function emp(id){return S.emps.find(e=>e.id===id)}
@@ -613,6 +653,30 @@ function pickEmployee(d,stid){
         ${it.reason?`<span class="rsn">${it.reason}</span>`:`<span class="hint">${it.e.role||'עובד'}</span>`}</div>
       </div>`).join('')}</div>`;
   openSheet(html);
+}
+const DAYL=['א','ב','ג','ד','ה','ו','ש'];
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function openCell(d,stid){
+  const w=weekObj(),st=S.stypes.find(s=>s.id===stid),date=addDays(cur,d);
+  const ids=((((w['d'+d]||{})[stid])||[])).filter(id=>emp(id));
+  const cons=S.constr[wkKey(cur)]||{};
+  let h=`<h3>יום ${DAYS[d]} ${fmtDM(date)} · ${esc(st.name)}</h3><p class="hint" style="margin-top:0">${st.start}–${st.end}${S.minCov?` · נדרשים ${S.minCov}`:''}</p>`;
+  h+=ids.length?ids.map(id=>{const e=emp(id),tf=timesFor(st,e);
+    return `<div class="acc-row"><span class="ava" style="width:30px;height:30px;font-size:12px;background:${e.color}">${esc(initials(e.name))}</span>
+      <span style="flex:1;min-width:0">${esc(e.name)}${tf.own?` <span class="hint" dir="ltr">${tf.start}–${tf.end}</span>`:''}</span>
+      ${CAN_EDIT?`<button class="btn sm ghost" onclick="unassign(${d},'${stid}','${id}');openCell(${d},'${stid}')">הסר</button>`:''}</div>`}).join('')
+    :'<p class="hint">אין אף אחד במשמרת הזו.</p>';
+  if(CAN_EDIT){
+    const free=S.emps.filter(e=>!ids.includes(e.id));
+    if(free.length)h+=`<p class="hint" style="margin:16px 0 0">הוסף למשמרת</p><div class="pickgrid">`+free.map(e=>{
+      const blocked=(cons[e.id]||[]).includes(d);
+      const elsewhere=S.stypes.some(s=>s.id!==stid&&((((w['d'+d]||{})[s.id])||[]).includes(e.id)));
+      const reason=blocked?'אילוץ, לא זמין':elsewhere?'כבר במשמרת אחרת באותו יום':'';
+      return `<div class="pickitem${reason?' dis':''}" ${reason?'':`onclick="assign(${d},'${stid}','${e.id}');openCell(${d},'${stid}')"`}>
+        <span class="ava" style="width:32px;height:32px;font-size:13px;background:${e.color}">${esc(initials(e.name))}</span>
+        <div style="min-width:0;flex:1"><b style="display:block;font-size:14px">${esc(e.name)}</b>${reason?`<span class="rsn">${reason}</span>`:`<span class="hint">${esc(e.role||'עובד')}</span>`}</div></div>`}).join('')+'</div>';
+  }
+  openSheet(h);
 }
 function assign(d,stid,eid){
   const w=weekObj();if(!w['d'+d])w['d'+d]={};if(!w['d'+d][stid])w['d'+d][stid]=[];
@@ -654,6 +718,7 @@ function openEmp(id){
       <p class="hint" style="margin:2px 0 0">השאר ריק כדי להשתמש בשעות הרגילות.</p></div>
     <div class="field"><label>צבע</label><div class="colorpick" id="e_colors">${COLORS.map(c=>`<button class="c${c===e.color?' sel':''}" style="background:${c}" onclick="selColor('${c}')"></button>`).join('')}</div></div>
     <input type="hidden" id="e_color" value="${e.color}">
+    ${id?`<button class="btn sm ghost" style="margin:0 0 10px" onclick="closeSheet();previewMine('${id}')">👁 איך העובד רואה את המשמרות שלו</button>`:''}
     <div class="row-btns" style="margin-top:4px">
       <button class="btn block" onclick="saveEmp('${id||''}')">שמירה</button>
       ${id?`<button class="btn danger" style="flex:none" onclick="delEmp('${id}')">מחק</button>`:''}
@@ -784,7 +849,52 @@ $('#themeBtn').onclick=()=>{S.theme=S.theme==='auto'?'light':S.theme==='light'?'
 /* ============ boot ============ */
 function renderAll(){renderBoard();
   const on=document.querySelector('.screen.on').id.replace('sc-','');
-  if(on==='emps')renderEmps();if(on==='constraints')renderConstraints();if(on==='summary')renderSummary();if(on==='settings')renderSettings();
+  setupTabs();
+  if(on==='mine')renderMine();if(on==='emps')renderEmps();if(on==='constraints')renderConstraints();if(on==='summary')renderSummary();if(on==='settings')renderSettings();
+}
+/* ============ "my shifts" (employee view) + role-based tabs ============ */
+let LANDED=false,MINE_PREVIEW=null;
+const MONTHS=['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+// the signed-in user's employee record = employee whose name matches the login name
+function myEmp(){if(!USER)return null;const n=normName(displayName());return S.emps.find(e=>normName(e.name)===n)||null}
+function setupTabs(){
+  const me=myEmp(),mgr=CAN_EDIT;
+  const vis={mine:!!me||!!MINE_PREVIEW,board:true,emps:mgr,constraints:mgr,summary:mgr,settings:true};
+  let n=0;document.querySelectorAll('.tabbar .tab').forEach(t=>{const v=vis[t.dataset.sc];t.style.display=v?'':'none';if(v)n++});
+  $('.tabbar').style.gridTemplateColumns=`repeat(${n},1fr)`;
+  if(!LANDED&&USER&&me&&!IS_OWNER&&!MINE_PREVIEW){LANDED=true;go('mine')}  // employees land on their own shifts
+}
+function previewMine(id){MINE_PREVIEW=id;setupTabs();go('mine')}
+function renderMine(){
+  const box=$('#mineBody');if(!box)return;
+  const e=MINE_PREVIEW?emp(MINE_PREVIEW):myEmp();
+  if(!e){box.innerHTML='<div class="empty"><div class="ic">🙋</div>לא מצאתי עובד בשם שלך ברשימת העובדים.<br>פנה למנהל.</div>';return}
+  const now=new Date(),from=new Date(now.getFullYear(),now.getMonth(),1),to=new Date(now.getFullYear(),now.getMonth()+2,0);
+  const list=[];
+  for(let dt=new Date(from);dt<=to;dt=addDays(dt,1)){   // walk real dates, look each up the same way the board does
+    const w=S.sched[wkKey(startOfWeek(dt))];if(!w)continue;const dd=w['d'+dt.getDay()]||{};
+    S.stypes.forEach(st=>{if((dd[st.id]||[]).includes(e.id)){const tf=timesFor(st,e),[hh,mm]=tf.start.split(':').map(Number);
+      const s=new Date(dt.getFullYear(),dt.getMonth(),dt.getDate(),hh,mm),hrs=hoursOf(tf);
+      list.push({dt:new Date(dt),st,tf,s,end:new Date(s.getTime()+hrs*36e5),hrs})}})
+  }
+  list.sort((a,b)=>a.s-b.s);
+  const next=list.find(x=>x.end>now),thisM=list.filter(x=>x.dt.getMonth()===now.getMonth()),mHrs=Math.round(thisM.reduce((a,x)=>a+x.hrs,0));
+  const rel=dt=>{const a=new Date(now.getFullYear(),now.getMonth(),now.getDate()),b=new Date(dt.getFullYear(),dt.getMonth(),dt.getDate()),df=Math.round((b-a)/864e5);
+    return df===0?'היום':df===1?'מחר':`יום ${DAYS[dt.getDay()]} ${fmtDM(dt)}`};
+  const onNow=next&&next.s<=now;
+  let h='';
+  if(MINE_PREVIEW)h+=`<div class="install-bar" style="background:var(--warn-soft);border-color:var(--warn)"><span class="ib-ic">👁</span><div class="ib-t">כך <b>${esc(e.name)}</b> רואה את המשמרות</div><button class="btn sm ghost" onclick="MINE_PREVIEW=null;setupTabs();go('board')">חזרה</button></div>`;
+  h+=`<div class="mine-hero"><div class="lbl">שלום ${esc(e.name)} · ${onNow?'את/ה במשמרת עכשיו':'המשמרת הבאה'}</div>`+
+    (next?`<div class="big">${rel(next.dt)}, ${esc(next.st.name)}</div><div class="tm">${next.tf.start}–${next.tf.end}</div>${onNow?'<span class="now">עכשיו במשמרת</span>':''}`
+         :'<div class="big" style="font-size:20px">אין משמרות קרובות</div>')+'</div>';
+  h+=`<div class="mine-stats"><div><span>משמרות ב${MONTHS[now.getMonth()]}</span><b>${thisM.length}</b></div><div><span>שעות ב${MONTHS[now.getMonth()]}</span><b>${mHrs}</b></div></div>`;
+  if(list.length){
+    h+='<div class="mine-list">';let lm=-1;
+    list.forEach(x=>{if(x.dt.getMonth()!==lm){lm=x.dt.getMonth();h+=`<div class="mine-month">${MONTHS[lm]} ${x.dt.getFullYear()}</div>`}
+      h+=`<div class="mine-row${x.end<=now?' past':''}"><i class="bar" style="background:${x.st.color}"></i><div class="dt"><b>${fmtDM(x.dt)}</b><span>יום ${DAYS[x.dt.getDay()]}</span></div><div class="sh">${esc(x.st.name)}</div><div class="tt">${x.tf.start}–${x.tf.end}</div></div>`});
+    h+='</div>';
+  }else h+='<div class="empty">אין משמרות בחודש הזה ובחודש הבא.</div>';
+  box.innerHTML=h;
 }
 /* ============ install to home screen ============ */
 let deferredPrompt=null;
