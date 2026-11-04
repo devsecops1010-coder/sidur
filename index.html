@@ -159,9 +159,48 @@ h2.page{font-size:22px;font-weight:800;margin:4px 0 14px;letter-spacing:-.02em}
 .screen{display:none}.screen.on{display:block;animation:fade .25s}
 @keyframes fade{from{opacity:0}to{opacity:1}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important}}
+/* auth gate */
+.gate{position:fixed;inset:0;z-index:100;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px 16px calc(24px + var(--safe-b))}
+.gate.hidden{display:none}
+.gate-card{width:100%;max-width:380px;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:24px 20px;box-shadow:var(--shadow);text-align:center}
+.gate-logo{width:52px;height:52px;border-radius:15px;margin:0 auto 10px;background:linear-gradient(135deg,var(--accent),var(--accent-d));color:#fff;display:grid;place-items:center;font-size:24px;font-weight:800}
+.gate-card h2{margin:0 0 6px;font-size:21px}
+.gate-card .input{text-align:start}
+.gate-or{margin:14px 0 10px;color:var(--txt3);font-size:12px}
+.linkbtn{background:none;border:none;color:var(--accent);font-size:13px;margin-top:12px;padding:4px}
+.gate-err{color:var(--bad);font-size:13px;min-height:18px;margin-top:8px}
+/* read-only (viewer) mode */
+body.readonly .addslot,body.readonly .chip .x,body.readonly #pubBtn,body.readonly .fab,body.readonly .editonly{display:none!important}
+.acc-row{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}
+.acc-row .em{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;direction:ltr;text-align:start}
+.acc-role{font-size:12px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--accent-soft);color:var(--accent)}
 </style>
 </head>
 <body>
+<div id="authGate" class="gate">
+  <div class="gate-card">
+    <div class="gate-logo">ס</div>
+    <h2>סידור · כניסה</h2>
+    <p class="hint" id="gateMsg">הסידור פרטי. רק אנשים שהמנהל אישר יכולים לראות אותו.</p>
+    <div id="gateLogin">
+      <button class="btn block" onclick="loginGoogle()">כניסה עם Google</button>
+      <div class="gate-or">או עם מייל וסיסמה</div>
+      <input class="input" id="gEmail" type="email" dir="ltr" placeholder="name@example.com" autocomplete="email">
+      <input class="input" id="gPass" type="password" dir="ltr" placeholder="סיסמה, 6 תווים לפחות" autocomplete="current-password" style="margin-top:8px">
+      <div class="row-btns" style="margin-top:10px">
+        <button class="btn block ghost" onclick="loginEmail()">כניסה</button>
+        <button class="btn block ghost" onclick="signupEmail()">הרשמה</button>
+      </div>
+      <button class="linkbtn" onclick="resetPass()">שכחתי סיסמה</button>
+    </div>
+    <div id="gateWait" style="display:none">
+      <p id="gateWaitMsg" style="line-height:1.6"></p>
+      <button class="btn block" onclick="recheckAccess()">בדוק שוב</button>
+      <button class="btn block ghost" style="margin-top:8px" onclick="logout()">התנתקות</button>
+    </div>
+    <div class="gate-err" id="gateErr"></div>
+  </div>
+</div>
 <div id="toasts"></div>
 <div class="app">
   <div class="top">
@@ -251,11 +290,25 @@ h2.page{font-size:22px;font-weight:800;margin:4px 0 14px;letter-spacing:-.02em}
         </div>
       </div>
       <div class="sec-card">
+        <h3>חשבון</h3>
+        <p class="hint" id="whoami" style="margin-top:0"></p>
+        <button class="btn sm ghost" onclick="logout()">התנתקות</button>
+      </div>
+      <div class="sec-card" id="accessCard" style="display:none">
+        <h3>🔒 מי יכול לראות את הסידור</h3>
+        <p class="hint" style="margin-top:0">רק אנשים ברשימה נכנסים. <b>עורך</b> יכול לשנות, <b>צופה</b> רק רואה. הוסף את המייל שאיתו הם מתחברים.</p>
+        <div id="accessList"></div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <input class="input" id="accEmail" type="email" dir="ltr" placeholder="name@gmail.com" style="flex:1;min-width:0">
+          <select class="input" id="accRole" style="width:auto;flex:none"><option value="viewer">צופה</option><option value="editor">עורך</option></select>
+        </div>
+        <button class="btn sm" style="margin-top:8px" onclick="addAccess()">הוסף גישה</button>
+      </div>
+      <div class="sec-card">
         <h3>נתונים</h3>
         <div class="row-btns">
           <button class="btn sm ghost" onclick="exportData()">ייצוא גיבוי</button>
-          <button class="btn sm ghost" onclick="seedDemo()">נתוני דוגמה</button>
-          <button class="btn sm danger" onclick="wipeAll()">איפוס</button>
+          <button class="btn sm ghost" onclick="wipeAll()">נקה מהמכשיר הזה</button>
         </div>
       </div>
       <p class="hint" style="text-align:center;margin-top:18px">סידור · מערכת ניהול משמרות · נשמר במכשיר שלך</p>
@@ -284,6 +337,7 @@ h2.page{font-size:22px;font-weight:800;margin:4px 0 14px;letter-spacing:-.02em}
 
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script>
 /* ============ storage ============ */
 const KEY='shiftapp.v1';
@@ -303,33 +357,97 @@ function load(){try{const r=JSON.parse(localStorage.getItem(KEY));if(r&&r.stypes
 function save(){
   if(!applyingRemote)S._t=Date.now();
   try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}
-  if(!applyingRemote)pushCloud();
+  if(applyingRemote)return;
+  if(!CAN_EDIT){ // viewer: keep only the theme, revert any schedule change
+    if(LAST_CLOUD){const th=S.theme,strip=o=>{const c=JSON.parse(JSON.stringify(o));delete c.theme;delete c._t;return JSON.stringify(c)};
+      if(strip(S)!==strip(JSON.parse(LAST_CLOUD))){toast('צפייה בלבד, אין לך הרשאת עריכה');S=JSON.parse(LAST_CLOUD);S.theme=th;renderAll()}
+      try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+    return;
+  }
+  pushCloud();
 }
 
 /* ============ firebase realtime sync ============ */
 const FB_CONFIG={apiKey:"AIzaSyBC3mvpnaMF-idW26lkkKpXyLo8ePE6apQ",authDomain:"ravakim-budapest.firebaseapp.com",projectId:"ravakim-budapest",storageBucket:"ravakim-budapest.firebasestorage.app",messagingSenderId:"864932417069",appId:"1:864932417069:web:773c95c4c286874105f2a4"};
-let cloudDoc=null,applyingRemote=false,pushTimer=null;
+let cloudDoc=null,applyingRemote=false,pushTimer=null,unsub=null,firstSnap=true,LAST_CLOUD=null,USER=null,CAN_EDIT=false,IS_OWNER=false;
+function fbInit(){try{if(!window.firebase||!firebase.auth)return false;if(!firebase.apps.length)firebase.initializeApp(FB_CONFIG);return true}catch(e){return false}}
+/* subscribe to the shared schedule — only after sign-in; the server rules decide who may read */
 function initCloud(){
-  try{
-    if(!window.firebase||!firebase.firestore)return;
-    firebase.initializeApp(FB_CONFIG);
-    cloudDoc=firebase.firestore().collection('sidur').doc('main');
-    cloudDoc.onSnapshot(snap=>{
-      const d=snap.data();if(!d||!d.s)return;
-      if((d.t||0)<=(S._t||0))return;           // our own echo or older — ignore
-      try{
-        const remote=JSON.parse(d.s),theme=S.theme;  // keep this device's theme
-        applyingRemote=true;S=remote;S.theme=theme;
-        try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}
-        applyingRemote=false;
-        applyTheme();setBiz(S.biz);renderAll();
-      }catch(e){}
-    },()=>{});
-    setCloudBadge(true);
-  }catch(e){setCloudBadge(false)}
+  if(unsub){unsub();unsub=null}
+  firstSnap=true;
+  cloudDoc=firebase.firestore().collection('sidur').doc('main');
+  unsub=cloudDoc.onSnapshot(snap=>{
+    hideGate();setCloudBadge(true);
+    const d=snap.data();if(!d||!d.s){firstSnap=false;return}
+    LAST_CLOUD=d.s;
+    if(!firstSnap&&(d.t||0)<=(S._t||0))return;   // own echo / older; first load always takes the cloud
+    firstSnap=false;
+    try{
+      const remote=JSON.parse(d.s),theme=S.theme;   // keep this device's theme
+      applyingRemote=true;S=remote;S.theme=theme;
+      try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}
+      applyingRemote=false;
+      applyTheme();setBiz(S.biz);renderAll();
+    }catch(e){applyingRemote=false}
+  },err=>{
+    setCloudBadge(false);
+    if(err.code==='permission-denied'){
+      try{localStorage.removeItem(KEY)}catch(e){}
+      const th=S.theme;S=DEFAULT();S.theme=th;renderAll();
+      showWait(`אין לך עדיין גישה לסידור.<br>בקש מהמנהל להוסיף את:<br><b dir="ltr">${(USER&&USER.email)||''}</b>`);
+    } else toast('אין חיבור לענן כרגע');
+  });
 }
+async function resolveRole(){
+  IS_OWNER=false;CAN_EDIT=false;
+  const db=firebase.firestore(),em=(USER.email||'').toLowerCase();
+  try{await db.collection('sidur_access').limit(1).get();IS_OWNER=true}catch(e){} // only the owner may list the access list
+  if(IS_OWNER)CAN_EDIT=true;
+  else{try{const s=await db.collection('sidur_access').doc(em).get();CAN_EDIT=s.exists&&s.data().role==='editor'}catch(e){}}
+  document.body.classList.toggle('readonly',!CAN_EDIT);
+}
+/* ---- auth gate ---- */
+function showGate(){$('#authGate').classList.remove('hidden');$('#gateLogin').style.display='';$('#gateWait').style.display='none'}
+function showWait(html){$('#authGate').classList.remove('hidden');$('#gateLogin').style.display='none';$('#gateWait').style.display='';$('#gateWaitMsg').innerHTML=html}
+function hideGate(){$('#authGate').classList.add('hidden');$('#gateErr').textContent=''}
+function gateErr(e){const m={'auth/invalid-credential':'מייל או סיסמה שגויים','auth/wrong-password':'סיסמה שגויה','auth/user-not-found':'אין משתמש עם המייל הזה','auth/email-already-in-use':'המייל כבר רשום, לחץ "כניסה"','auth/weak-password':'סיסמה קצרה מדי (6 תווים לפחות)','auth/invalid-email':'כתובת מייל לא תקינה','auth/missing-password':'צריך סיסמה','auth/popup-closed-by-user':'החלון נסגר לפני שהכניסה הסתיימה','auth/operation-not-allowed':'שיטת הכניסה הזו עוד לא הופעלה','auth/unauthorized-domain':'הכתובת עוד לא מאושרת ב-Firebase','auth/network-request-failed':'אין חיבור לאינטרנט','auth/too-many-requests':'יותר מדי ניסיונות, נסה שוב בעוד כמה דקות'};$('#gateErr').textContent=m[e&&e.code]||('שגיאה: '+((e&&(e.code||e.message))||''))}
+async function loginGoogle(){$('#gateErr').textContent='';const p=new firebase.auth.GoogleAuthProvider();p.setCustomParameters({prompt:'select_account'});
+  try{await firebase.auth().signInWithPopup(p)}catch(e){
+    if(e.code==='auth/popup-blocked'||e.code==='auth/operation-not-supported-in-this-environment'){try{await firebase.auth().signInWithRedirect(p)}catch(e2){gateErr(e2)}}else gateErr(e)}}
+const creds=()=>[$('#gEmail').value.trim(),$('#gPass').value];
+async function loginEmail(){$('#gateErr').textContent='';const[e,p]=creds();try{await firebase.auth().signInWithEmailAndPassword(e,p)}catch(x){gateErr(x)}}
+async function signupEmail(){$('#gateErr').textContent='';const[e,p]=creds();try{const c=await firebase.auth().createUserWithEmailAndPassword(e,p);await c.user.sendEmailVerification();onUser(c.user)}catch(x){gateErr(x)}}
+async function resetPass(){const e=$('#gEmail').value.trim();if(!e){$('#gateErr').textContent='כתוב קודם את המייל';return}try{await firebase.auth().sendPasswordResetEmail(e);$('#gateErr').textContent='נשלח מייל לאיפוס סיסמה'}catch(x){gateErr(x)}}
+async function recheckAccess(){const u=firebase.auth().currentUser;if(!u)return showGate();try{await u.reload();await u.getIdToken(true)}catch(e){}onUser(firebase.auth().currentUser)}
+async function logout(){if(unsub){unsub();unsub=null}cloudDoc=null;LAST_CLOUD=null;CAN_EDIT=false;IS_OWNER=false;
+  try{localStorage.removeItem(KEY)}catch(e){}const th=S.theme;S=DEFAULT();S.theme=th;renderAll();setCloudBadge(false);
+  try{await firebase.auth().signOut()}catch(e){}showGate()}
+async function onUser(u){
+  USER=u;
+  if(!u){if(unsub){unsub();unsub=null}cloudDoc=null;setCloudBadge(false);showGate();return}
+  if(u.providerData.some(p=>p.providerId==='password')&&!u.emailVerified){
+    showWait(`שלחנו מייל אימות ל-<b dir="ltr">${u.email}</b>.<br>לחץ על הקישור במייל, ואז על "בדוק שוב".`);return}
+  await resolveRole();
+  hideGate();   // show this device's last synced copy right away (works offline); the cloud replaces it
+  initCloud();
+  if(document.querySelector('#sc-settings.on'))renderSettings();
+}
+/* ---- owner: access list ---- */
+async function loadAccess(){const box=$('#accessList');box.innerHTML='<p class="hint">טוען…</p>';
+  try{const qs=await firebase.firestore().collection('sidur_access').get();box.innerHTML='';
+    if(qs.empty){box.innerHTML='<p class="hint">עוד לא הוספת אף אחד. כרגע רק אתה רואה את הסידור.</p>';return}
+    qs.forEach(d=>{const r=el('div','acc-row');const em=el('span','em');em.textContent=d.id;r.appendChild(em);
+      r.appendChild(el('span','acc-role',d.data().role==='editor'?'עורך':'צופה'));
+      const b=el('button','iconbtn','✕');b.style.cssText='width:30px;height:30px';b.title='הסר גישה';b.onclick=()=>removeAccess(d.id);r.appendChild(b);box.appendChild(r)})
+  }catch(e){box.innerHTML='<p class="hint">אין לך הרשאה לנהל גישה.</p>'}}
+async function addAccess(){const em=$('#accEmail').value.trim().toLowerCase();
+  if(!/^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}$/.test(em)){toast('כתובת מייל לא תקינה');return}
+  try{await firebase.firestore().collection('sidur_access').doc(em).set({role:$('#accRole').value,added:Date.now()});$('#accEmail').value='';toast('נוסף: '+em);loadAccess()}catch(e){toast('לא הצלחתי להוסיף')}}
+async function removeAccess(em){try{await firebase.firestore().collection('sidur_access').doc(em).delete();toast('הוסר: '+em);loadAccess()}catch(e){toast('לא הצלחתי להסיר')}}
+function renderAccount(){const w=$('#whoami');if(w)w.innerHTML=USER?`מחובר כ-<b dir="ltr">${USER.email}</b> · ${IS_OWNER?'מנהל':CAN_EDIT?'עורך':'צופה'}`:'';
+  const c=$('#accessCard');if(c){c.style.display=IS_OWNER?'':'none';if(IS_OWNER)loadAccess()}}
 function pushCloud(){
-  if(!cloudDoc)return;
+  if(!cloudDoc||!CAN_EDIT)return;
   clearTimeout(pushTimer);
   pushTimer=setTimeout(()=>{cloudDoc.set({s:JSON.stringify(S),t:S._t}).catch(()=>{})},400);
 }
@@ -563,6 +681,7 @@ function shareSchedule(){
 
 /* ============ SETTINGS ============ */
 function renderSettings(){
+  renderAccount();
   $('#bizName').value=S.biz;$('#minCov').value=S.minCov;
   const l=$('#stypeList');l.innerHTML='';
   S.stypes.forEach(st=>{
@@ -589,8 +708,9 @@ function seedDemo(){
   const w=weekObj();for(let d=0;d<6;d++){w['d'+d]={};S.stypes.forEach((st,si)=>{w['d'+d][st.id]=S.emps.slice((d+si)%4,(d+si)%4+2).map(e=>e.id)})}
   save();renderAll();go('board');toast('נטענו נתוני דוגמה');
 }
-function wipeAll(){openSheet(`<h3>איפוס מלא?</h3><p class="muted">כל העובדים, הסידורים והאילוצים יימחקו מהמכשיר. אי אפשר לבטל.</p>
-  <div class="row-btns" style="margin-top:14px"><button class="btn block ghost" onclick="closeSheet()">ביטול</button><button class="btn block danger" onclick="S=DEFAULT();save();closeSheet();renderAll();go('board');toast('אופס')">מחק הכל</button></div>`)}
+/* local-only clear: never touches the shared cloud schedule */
+function wipeAll(){openSheet(`<h3>לנקות מהמכשיר הזה?</h3><p class="muted">העותק השמור בטלפון הזה יימחק והחשבון יתנתק. הסידור בענן <b>לא</b> נמחק, והוא ייטען מחדש בכניסה הבאה.</p>
+  <div class="row-btns" style="margin-top:14px"><button class="btn block ghost" onclick="closeSheet()">ביטול</button><button class="btn block danger" onclick="closeSheet();logout();toast('נוקה מהמכשיר')">נקה והתנתק</button></div>`)}
 
 /* ============ theme ============ */
 function applyTheme(){const t=S.theme;document.documentElement.setAttribute('data-theme',t==='auto'?'':t);$('#themeBtn').textContent=t==='dark'?'☀':t==='light'?'☾':'◐'}
@@ -603,7 +723,8 @@ function renderAll(){renderBoard();
 }
 function boot(){
   setBiz(S.biz);applyTheme();renderBoard();
-  initCloud();
+  if(fbInit()){firebase.auth().getRedirectResult().catch(gateErr);firebase.auth().onAuthStateChanged(onUser)}
+  else $('#gateErr').textContent='לא הצלחתי לטעון את מערכת הכניסה. בדוק חיבור לאינטרנט ורענן.';
   if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 }
 boot();
