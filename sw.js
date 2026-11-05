@@ -1,5 +1,5 @@
 // סידור — offline service worker
-const CACHE = 'sidur-v14';
+const CACHE = 'sidur-v15';
 const ASSETS = ['./', './index.html', './manifest.json', './icon.png'];
 
 self.addEventListener('install', e => {

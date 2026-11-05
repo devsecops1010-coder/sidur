@@ -215,6 +215,8 @@ body.readonly .wg-add{display:none}
 .mine-row.past{opacity:.45}
 .mine-row .bar{width:4px;align-self:stretch;border-radius:2px}
 /* install-to-home-screen */
+.chg-card{background:var(--card);border:1.5px solid var(--warn);border-radius:16px;padding:12px 14px;margin-bottom:12px;box-shadow:var(--shadow)}
+.chg-h{font-weight:800;margin-bottom:6px}.chg-r{font-size:14px;padding:3px 0}.chg-r.add{color:var(--ok)}.chg-r.del{color:var(--bad);text-decoration:line-through}
 .install-bar{display:flex;align-items:center;gap:10px;background:var(--accent-soft);border:1px solid var(--accent);border-radius:14px;padding:10px 12px;margin-bottom:12px;font-size:13px;line-height:1.5}
 .install-bar .ib-ic{font-size:20px;flex:none}.install-bar .ib-t{flex:1;min-width:0}
 .install-bar .ib-x{border:none;background:none;color:var(--txt3);font-size:15px;padding:4px;flex:none}
@@ -373,6 +375,7 @@ body::before{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;
         <div id="gapsList"></div>
       </div>
       <button class="btn block ghost" onclick="shareSchedule()">📤 שתף את הסידור</button>
+      <button class="btn block ghost" style="margin-top:8px" onclick="exportMonthXlsx()">📊 ייצוא החודש לאקסל</button>
     </div>
   </section>
 
@@ -507,6 +510,7 @@ function initCloud(){
       try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}
       applyingRemote=false;
       applyTheme();setBiz(S.biz);renderAll();
+      migrate();
     }catch(e){applyingRemote=false}
   },err=>{
     setCloudBadge(false);
@@ -516,6 +520,15 @@ function initCloud(){
       showWait(`אין לך עדיין גישה לסידור.<br>פנה למנהל.<br><b>${displayName()}</b>`);
     } else toast('אין חיבור לענן כרגע');
   });
+}
+/* one-time schema upgrades, done by an editor right after the cloud copy is loaded */
+function migrate(){
+  if(!CAN_EDIT||!S.stypes)return;
+  if(!S._mig_bplus){
+    if(!S.stypes.some(s=>s.id==='mplus'||/בוקר\s*\+|בוקר פלוס/.test(s.name)))
+      S.stypes.splice(1,0,{id:'mplus',name:'בוקר+',code:'ב+',start:'07:00',end:'19:00',color:'#f97316',min:0});
+    S._mig_bplus=1;save();renderAll();
+  }
 }
 async function resolveRole(){
   IS_OWNER=false;CAN_EDIT=false;
@@ -631,6 +644,8 @@ function goToday(){cur=startOfWeek(new Date());renderAll()}
 function weekObj(){const k=wkKey(cur);if(!S.sched[k])S.sched[k]={};return S.sched[k]}
 function hoursOf(st){let[a,b]=[st.start,st.end].map(t=>{const[h,m]=t.split(':').map(Number);return h+m/60});let d=b-a;if(d<=0)d+=24;return d}
 /* per-employee hours: emp.hours = {stypeId:{start,end}} overrides the shift's default times for that person only */
+function codeOf(st){if(st.code)return st.code;const m={morning:'ב',noon:'צ',night:'ל',mplus:'ב+'};if(m[st.id])return m[st.id];const n=(st.name||'?').trim();return n[0]+(/\+|פלוס/.test(n)?'+':'')}
+function needFor(st){return st.min!=null&&st.min!==''?+st.min:(S.minCov||0)}
 function timesFor(st,e){const o=e&&e.hours&&e.hours[st.id];return o&&o.start&&o.end?{start:o.start,end:o.end,own:true}:{start:st.start,end:st.end,own:false}}
 function hoursFor(st,e){return hoursOf(timesFor(st,e))}
 
@@ -670,15 +685,16 @@ function renderBoard(){
   g.appendChild(el('div','wg-h wg-corner',''));
   for(let d=0;d<7;d++){
     const date=addDays(cur,d);let a=0;
-    S.stypes.forEach(st=>{a+=Math.min((((w['d'+d]||{})[st.id])||[]).length,need||1)});
-    const full=a>=(need||1)*S.stypes.length;
+    let req=0;S.stypes.forEach(st=>{const n=needFor(st);if(!n)return;req+=n;a+=Math.min((((w['d'+d]||{})[st.id])||[]).length,n)});
+    if(!req)S.stypes.forEach(st=>{req++;a+=Math.min((((w['d'+d]||{})[st.id])||[]).length,1)});
+    const full=a>=req;
     g.appendChild(el('div','wg-h'+(d===today?' today':''),`${DAYL[d]}<b>${date.getDate()}</b><span class="cv" style="background:${full?'var(--ok)':a?'var(--warn)':'var(--line)'}"></span>`));
   }
   S.stypes.forEach(st=>{
     g.appendChild(el('div','wg-st',`${esc(st.name)}<small>${shortT(st.start)}–${shortT(st.end)}</small><i style="background:${st.color}"></i>`));
     for(let d=0;d<7;d++){
       const ids=((((w['d'+d]||{})[st.id])||[])).filter(id=>emp(id));
-      const c=el('div','wg-c'+(d===today?' today':'')+(need&&ids.length<need?' short':''));
+      const nd=needFor(st),c=el('div','wg-c'+(d===today?' today':'')+(nd&&ids.length<nd?' short':''));
       ids.forEach(id=>{const e=emp(id),tf=timesFor(st,e),n=el('div','wg-n');
         n.style.setProperty('--c',e.color);n.textContent=e.name;
         if(tf.own){const s=el('small');s.textContent=tf.start;n.appendChild(s)}
@@ -723,7 +739,7 @@ function openCell(d,stid){
   const w=weekObj(),st=S.stypes.find(s=>s.id===stid),date=addDays(cur,d);
   const ids=((((w['d'+d]||{})[stid])||[])).filter(id=>emp(id));
   const cons=S.constr[wkKey(cur)]||{};
-  let h=`<h3>יום ${DAYS[d]} ${fmtDM(date)} · ${esc(st.name)}</h3><p class="hint" style="margin-top:0">${st.start}–${st.end}${S.minCov?` · נדרשים ${S.minCov}`:''}</p>`;
+  let h=`<h3>יום ${DAYS[d]} ${fmtDM(date)} · ${esc(st.name)}</h3><p class="hint" style="margin-top:0">${st.start}–${st.end}${needFor(st)?` · נדרשים ${needFor(st)}`:''}</p>`;
   h+=ids.length?ids.map(id=>{const e=emp(id),tf=timesFor(st,e);
     return `<div class="acc-row"><span class="ava" style="width:30px;height:30px;font-size:12px;background:${e.color}">${esc(initials(e.name))}</span>
       <span style="flex:1;min-width:0">${esc(e.name)}${tf.own?` <span class="hint" dir="ltr">${tf.start}–${tf.end}</span>`:''}</span>
@@ -840,7 +856,7 @@ function renderSummary(){
   for(let d=0;d<7;d++)S.stypes.forEach(st=>{
     const a=(((w['d'+d]||{})[st.id])||[]);
     totalShifts+=a.length;a.forEach(id=>{if(per[id]){const hh=hoursFor(st,emp(id));per[id].s++;per[id].h+=hh;totalHours+=hh}});
-    if(a.length<S.minCov)gaps.push({d,st,miss:S.minCov-a.length});
+    if(a.length<needFor(st))gaps.push({d,st,miss:needFor(st)-a.length});
   });
   $('#statGrid').innerHTML=`
     <div class="statbox"><div class="v">${totalShifts}</div><div class="l">משמרות שובצו</div></div>
@@ -861,6 +877,35 @@ function renderSummary(){
   const gc=$('#gapsCard'),gl=$('#gapsList');
   if(gaps.length){gc.style.display='';gl.innerHTML=gaps.map(g=>`<div class="hoursrow" style="gap:8px"><span class="need" style="align-self:center">חסר ${g.miss}</span><div style="flex:1"><b>${DAYS[g.d]}</b> · ${g.st.name} <span class="hint">(${g.st.start}–${g.st.end})</span></div></div>`).join('')}
   else gc.style.display='none';
+}
+/* monthly roster → Excel, same layout as the paper roster: employees × days, cells = ב / צ / ל / ב+ */
+function loadXLSX(){return window.XLSX?Promise.resolve(window.XLSX):new Promise((ok,no)=>{const sc=document.createElement('script');sc.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';sc.onload=()=>ok(window.XLSX);sc.onerror=no;document.head.appendChild(sc)})}
+function monthGrid(){
+  const mid=addDays(cur,3),y=mid.getFullYear(),m=mid.getMonth(),N=new Date(y,m+1,0).getDate();
+  const head=['עובד'],dow=[''];
+  for(let i=1;i<=N;i++){head.push(i);dow.push(DAYL[new Date(y,m,i).getDay()])}
+  head.push('משמרות','שעות');dow.push('','');
+  const rows=S.emps.map(e=>{let n=0,h=0;const r=[e.name];
+    for(let i=1;i<=N;i++){const dt=new Date(y,m,i),w=S.sched[wkKey(startOfWeek(dt))],dd=(w&&w['d'+dt.getDay()])||{};
+      const c=S.stypes.filter(st=>(dd[st.id]||[]).includes(e.id)).map(st=>{n++;h+=hoursFor(st,e);return codeOf(st)});
+      r.push(c.join('/'))}
+    r.push(n,Math.round(h*100)/100);return r});
+  const legend=S.stypes.map(st=>`${codeOf(st)} = ${st.name} ${st.start}–${st.end}`).join('   ');
+  return {y,m,N,aoa:[[`סידור עבודה · ${S.biz} · ${MONTHS[m]} ${y}`],head,dow,...rows,[],[legend]]};
+}
+async function exportMonthXlsx(){
+  const g=monthGrid(),fn=`סידור-${MONTHS[g.m]}-${g.y}`;
+  try{
+    const X=await loadXLSX(),ws=X.utils.aoa_to_sheet(g.aoa);
+    ws['!cols']=[{wch:14},...Array(g.N).fill({wch:4}),{wch:8},{wch:7}];
+    ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:Math.min(g.N+2,12)}}];
+    const wb=X.utils.book_new();X.utils.book_append_sheet(wb,ws,`${MONTHS[g.m]} ${g.y}`);
+    wb.Workbook={Views:[{RTL:true}]};
+    X.writeFile(wb,fn+'.xlsx');toast('הקובץ ירד ✓');
+  }catch(err){ // offline / CDN blocked → CSV that Excel opens too
+    const csv='\ufeff'+g.aoa.map(r=>r.map(v=>{v=v==null?'':String(v);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}).join(',')).join('\r\n');
+    const u=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})),a=el('a');a.href=u;a.download=fn+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(u),2000);toast('ירד כקובץ CSV (נפתח באקסל)');
+  }
 }
 function shareSchedule(){
   const w=weekObj();let txt=`📅 סידור עבודה · ${S.biz}\n${fmtDM(cur)}–${fmtDM(addDays(cur,6))}\n`;
@@ -883,6 +928,7 @@ function renderSettings(){
       <input class="input" style="flex:1;padding:8px 10px" value="${st.name}" onchange="updStype('${st.id}','name',this.value)">
       <input class="timeinput" value="${st.start}" onchange="updStype('${st.id}','start',this.value)">
       <input class="timeinput" value="${st.end}" onchange="updStype('${st.id}','end',this.value)">
+      <input class="timeinput" style="width:46px" type="number" min="0" max="20" title="מינימום עובדים (ריק = ברירת המחדל)" placeholder="${S.minCov||0}" value="${st.min!=null?st.min:''}" onchange="updStype('${st.id}','min',this.value===''?null:Math.max(0,+this.value||0))">
       <button class="iconbtn" style="width:32px;height:32px" onclick="delStype('${st.id}')">🗑</button>`;
     l.appendChild(row);
   });
@@ -927,6 +973,21 @@ function setupTabs(){
   $('.tabbar').style.gridTemplateColumns=`repeat(${n},1fr)`;
   if(!LANDED&&USER&&me&&!IS_OWNER&&!MINE_PREVIEW){LANDED=true;go('mine')}  // employees land on their own shifts
 }
+/* "your schedule changed" — compares this device's last-seen copy of the employee's upcoming shifts */
+let MINE_SEEN=null;
+function mineChanges(e,list,now,to){
+  const K='sidur.seen.'+e.id,curr=list.filter(x=>x.end>now).map(x=>({k:`${wkKey(x.dt)}|${x.st.id}|${x.tf.start}-${x.tf.end}`,l:`יום ${DAYS[x.dt.getDay()]} ${fmtDM(x.dt)} · ${x.st.name} ${x.tf.start}–${x.tf.end}`,t:+x.end,d:+x.dt}));
+  MINE_SEEN={K,v:{to:+to,items:curr}};
+  let old=null;try{old=JSON.parse(localStorage.getItem(K))}catch(err){}
+  if(!old||!old.items){ackMine(true);return ''}
+  const ok=new Set(old.items.map(i=>i.k)),ck=new Set(curr.map(i=>i.k));
+  const added=curr.filter(i=>!ok.has(i.k)&&i.d<=old.to),removed=old.items.filter(i=>!ck.has(i.k)&&i.t>+now);
+  if(!added.length&&!removed.length){ackMine(true);return ''}
+  return `<div class="chg-card"><div class="chg-h">🔔 הסידור שלך השתנה</div>`+
+    added.map(i=>`<div class="chg-r add">＋ ${esc(i.l)}</div>`).join('')+removed.map(i=>`<div class="chg-r del">－ ${esc(i.l)}</div>`).join('')+
+    `<button class="btn sm" style="margin-top:8px" onclick="ackMine()">הבנתי</button></div>`;
+}
+function ackMine(silent){if(!MINE_SEEN)return;try{localStorage.setItem(MINE_SEEN.K,JSON.stringify(MINE_SEEN.v))}catch(e){}if(!silent)renderMine()}
 function previewMine(id){MINE_PREVIEW=id;setupTabs();go('mine')}
 function renderMine(){
   const box=$('#mineBody');if(!box)return;
@@ -947,6 +1008,7 @@ function renderMine(){
   const onNow=next&&next.s<=now;
   let h='';
   if(MINE_PREVIEW)h+=`<div class="install-bar" style="background:var(--warn-soft);border-color:var(--warn)"><span class="ib-ic">👁</span><div class="ib-t">כך <b>${esc(e.name)}</b> רואה את המשמרות</div><button class="btn sm ghost" onclick="MINE_PREVIEW=null;setupTabs();go('board')">חזרה</button></div>`;
+  if(!MINE_PREVIEW)h+=mineChanges(e,list,now,to);
   h+=`<div class="mine-hero"><div class="lbl">שלום ${esc(e.name)} · ${onNow?'את/ה במשמרת עכשיו':'המשמרת הבאה'}</div>`+
     (next?`<div class="big">${rel(next.dt)}, ${esc(next.st.name)}</div><div class="tm">${next.tf.start}–${next.tf.end}</div>${onNow?'<span class="now">עכשיו במשמרת</span>':''}`
          :'<div class="big" style="font-size:20px">אין משמרות קרובות</div>')+'</div>';
