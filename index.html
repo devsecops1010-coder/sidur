@@ -470,14 +470,15 @@ const DEFAULT=()=>({
   sched:{},      // weekKey -> {d0:{morning:[empId]}, published:bool}
   constr:{},     // weekKey -> {empId:[dayIdx]}
 });
+const THEME_KEY='sidur.theme';const devTheme=()=>{try{return localStorage.getItem(THEME_KEY)||'auto'}catch(e){return 'auto'}};
 let S=load();
-function load(){try{const r=JSON.parse(localStorage.getItem(KEY));if(r&&r.stypes)return r}catch(e){}return DEFAULT()}
+function load(){let r=null;try{r=JSON.parse(localStorage.getItem(KEY))}catch(e){}if(!r||!r.stypes)r=DEFAULT();r.theme=devTheme();return r}
 function save(){
   if(!applyingRemote)S._t=Date.now();
   try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}
   if(applyingRemote)return;
   if(!CAN_EDIT){ // viewer: keep only the theme, revert any schedule change
-    if(LAST_CLOUD){const th=S.theme,strip=o=>{const c=JSON.parse(JSON.stringify(o));delete c.theme;delete c._t;return JSON.stringify(c)};
+    if(LAST_CLOUD){const th=S.theme,strip=o=>{const c=JSON.parse(JSON.stringify(o));delete c.theme;delete c._t;return JSON.stringify(c,(k,v)=>v&&typeof v==='object'&&!Array.isArray(v)&&!Object.keys(v).length?undefined:v)};
       if(strip(S)!==strip(JSON.parse(LAST_CLOUD))){toast('צפייה בלבד, אין לך הרשאת עריכה');S=JSON.parse(LAST_CLOUD);S.theme=th;renderAll()}
       try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
     return;
@@ -487,12 +488,12 @@ function save(){
 
 /* ============ firebase realtime sync ============ */
 const FB_CONFIG={apiKey:"AIzaSyBC3mvpnaMF-idW26lkkKpXyLo8ePE6apQ",authDomain:"ravakim-budapest.firebaseapp.com",projectId:"ravakim-budapest",storageBucket:"ravakim-budapest.firebasestorage.app",messagingSenderId:"864932417069",appId:"1:864932417069:web:773c95c4c286874105f2a4"};
-let cloudDoc=null,applyingRemote=false,pushTimer=null,unsub=null,firstSnap=true,LAST_CLOUD=null,USER=null,CAN_EDIT=false,IS_OWNER=false;
+let cloudDoc=null,applyingRemote=false,pushTimer=null,unsub=null,firstSnap=true,LAST_CLOUD=null,USER=null,CAN_EDIT=false,IS_OWNER=false,CLOUD_READY=false,BASE_T=null,LAST_APPLIED=null,RETRY=null;
 function fbInit(){try{if(!window.firebase||!firebase.auth)return false;if(!firebase.apps.length)firebase.initializeApp(FB_CONFIG);return true}catch(e){return false}}
 /* subscribe to the shared schedule — only after sign-in; the server rules decide who may read */
 function initCloud(){
   if(unsub){unsub();unsub=null}
-  firstSnap=true;
+  clearTimeout(RETRY);firstSnap=true;CLOUD_READY=false;LAST_APPLIED=null;
   cloudDoc=firebase.firestore().collection('sidur').doc('main');
   /* Sync rules (no device clocks involved — phones and PCs often disagree by minutes):
      - our own write echoing back (hasPendingWrites) is ignored;
@@ -501,28 +502,30 @@ function initCloud(){
   unsub=cloudDoc.onSnapshot(snap=>{
     hideGate();setCloudBadge(true);
     if(snap.metadata.hasPendingWrites)return;
+    if(!snap.metadata.fromCache)CLOUD_READY=true;     // edits are sent only once the real server copy is known
     const d=snap.data();if(!d||!d.s){firstSnap=false;return}
     LAST_CLOUD=d.s;
     let pending=false;try{pending=!!localStorage.getItem(PKEY)}catch(e){}
-    if(pending&&CAN_EDIT){              // a local change that the server hasn't confirmed yet → send it, keep it on screen
+    if(pending&&d.s===JSON.stringify(S)){try{localStorage.removeItem(PKEY)}catch(e){}pending=false}
+    if(pending&&CAN_EDIT){   // unsent local change → try to send it; flushPush refuses if the cloud changed meanwhile (no stale overwrite)
       const wasFirst=firstSnap;firstSnap=false;if(wasFirst)renderAll();flushPush();return}
     firstSnap=false;
-    applyRemote(d.s);
+    applyRemote(d.s,d.t);
   },err=>{
     setCloudBadge(false);
     if(err.code==='permission-denied'){
       try{localStorage.removeItem(KEY);localStorage.removeItem(PKEY)}catch(e){}
-      const th=S.theme;S=DEFAULT();S.theme=th;renderAll();
-      showWait(`אין לך עדיין גישה לסידור.<br>פנה למנהל.<br><b>${displayName()}</b>`);
-    } else toast('אין חיבור לענן כרגע');
+      LAST_APPLIED=null;CLOUD_READY=false;S=DEFAULT();S.theme=devTheme();renderAll();
+      showWait(`אין לך עדיין גישה לסידור.<br>פנה למנהל.<br><b>${esc(displayName())}</b>`);
+    } else {toast('אין חיבור לענן כרגע, מנסה שוב…');unsub=null;clearTimeout(RETRY);RETRY=setTimeout(()=>{if(USER&&cloudDoc)initCloud()},5000)}
   });
 }
-let LAST_APPLIED=null;
-function applyRemote(str){
+function applyRemote(str,t){
+  if(t!=null)BASE_T=t;
   if(!str||str===LAST_APPLIED)return;LAST_APPLIED=str;
   try{
-    const remote=JSON.parse(str),theme=S.theme;   // keep this device's theme
-    applyingRemote=true;S=remote;S.theme=theme;
+    const remote=JSON.parse(str);
+    applyingRemote=true;S=remote;S.theme=devTheme();   // theme is per device
     try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}
     applyingRemote=false;
     applyTheme();showBiz();renderAll();
@@ -541,9 +544,12 @@ function migrate(){
 async function resolveRole(){
   IS_OWNER=false;CAN_EDIT=false;
   const db=firebase.firestore(),em=(USER.email||'').toLowerCase();
-  try{await db.collection('sidur_access').limit(1).get();IS_OWNER=true}catch(e){} // only the owner may list the access list
+  const RK='sidur.role.'+USER.uid;let net=false;
+  try{await db.collection('sidur_access').limit(1).get();IS_OWNER=true}catch(e){if(e.code!=='permission-denied')net=true} // only the owner may list the access list
   if(IS_OWNER)CAN_EDIT=true;
-  else{try{const s=await db.collection('sidur_access').doc(em).get();CAN_EDIT=s.exists&&s.data().role==='editor'}catch(e){}}
+  else{try{const s=await db.collection('sidur_access').doc(em).get();CAN_EDIT=s.exists&&s.data().role==='editor'}catch(e){if(e.code!=='permission-denied')net=true}}
+  if(net&&!IS_OWNER){try{const c=JSON.parse(localStorage.getItem(RK)||'null');if(c){IS_OWNER=c.o;CAN_EDIT=c.e}}catch(e){}}   // offline → last known role
+  else try{localStorage.setItem(RK,JSON.stringify({o:IS_OWNER,e:CAN_EDIT}))}catch(e){}
   document.body.classList.toggle('readonly',!CAN_EDIT);
 }
 /* ---- auth gate ---- */
@@ -570,9 +576,11 @@ async function loginName(){$('#gateErr').textContent='';const n=$('#gName').valu
   if(!normName(n)){$('#gateErr').textContent='כתוב שם משתמש';return}
   try{await firebase.auth().signInWithEmailAndPassword(name2email(n),p)}catch(x){gateErr(x.code==='auth/invalid-credential'||x.code==='auth/user-not-found'||x.code==='auth/wrong-password'?{code:'name-bad'}:x)}}
 async function recheckAccess(){const u=firebase.auth().currentUser;if(!u)return showGate();try{await u.reload();await u.getIdToken(true)}catch(e){}onUser(firebase.auth().currentUser)}
-async function logout(){try{await flushPush()}catch(e){}  // never drop an unsent change
-  if(unsub){unsub();unsub=null}cloudDoc=null;LAST_CLOUD=null;CAN_EDIT=false;IS_OWNER=false;
-  try{localStorage.removeItem(KEY);localStorage.removeItem(PKEY)}catch(e){}const th=S.theme;S=DEFAULT();S.theme=th;renderAll();setCloudBadge(false);
+async function logout(){try{await Promise.race([flushPush(),new Promise(r=>setTimeout(r,4000))])}catch(e){}  // try to send an unsent change, but never hang offline
+  let p=false;try{p=!!localStorage.getItem(PKEY)}catch(e){}
+  if(p&&!confirm('יש שינוי שעוד לא נשמר בענן (אין חיבור). להתנתק בכל זאת? השינוי יאבד.'))return;
+  if(unsub){unsub();unsub=null}clearTimeout(RETRY);cloudDoc=null;LAST_CLOUD=null;LAST_APPLIED=null;CLOUD_READY=false;BASE_T=null;CAN_EDIT=false;IS_OWNER=false;
+  try{localStorage.removeItem(KEY);localStorage.removeItem(PKEY)}catch(e){}S=DEFAULT();S.theme=devTheme();renderAll();setCloudBadge(false);
   try{await firebase.auth().signOut()}catch(e){}showGate()}
 async function onUser(u){
   USER=u;
@@ -618,7 +626,8 @@ function renderAccount(){const w=$('#whoami');if(w){w.textContent='';if(USER){w.
 const PKEY='shiftapp.pending';
 function pushCloud(){
   if(!cloudDoc||!CAN_EDIT)return;
-  try{localStorage.setItem(PKEY,'1')}catch(e){}
+  if(!CLOUD_READY){toast('הסידור עדיין נטען, נסה שוב בעוד רגע');LAST_APPLIED=null;if(LAST_CLOUD)applyRemote(LAST_CLOUD);return}
+  try{if(!localStorage.getItem(PKEY))localStorage.setItem(PKEY,String(BASE_T))}catch(e){}   // = the cloud version this edit started from
   clearTimeout(pushTimer);
   pushTimer=setTimeout(flushPush,150);
 }
@@ -627,20 +636,28 @@ function flushPush(){
   if(!cloudDoc||!CAN_EDIT)return Promise.resolve();
   let pending=false;try{pending=!!localStorage.getItem(PKEY)}catch(e){}
   if(!pending)return Promise.resolve();
+  let base=null;try{base=localStorage.getItem(PKEY)}catch(e){}
   const t=S._t,str=JSON.stringify(S);LAST_APPLIED=str;
-  return cloudDoc.set({s:str,t}).then(()=>{
+  return firebase.firestore().runTransaction(tx=>tx.get(cloudDoc).then(sn=>{
+      const cur=sn.data();
+      // someone else saved since this edit started (e.g. an old unsent change from days ago) → don't overwrite their work
+      if(cur&&cur.s!==str&&base!=='null'&&base!=null&&String(cur.t)!==base)throw {code:'conflict',cur};
+      tx.set(cloudDoc,{s:str,t});
+    })).then(()=>{
       if(S._t!==t)return;                       // newer local change already on its way
-      try{localStorage.removeItem(PKEY)}catch(e){}
+      BASE_T=t;try{localStorage.removeItem(PKEY)}catch(e){}
       // someone else may have written while ours was in flight → take the server's final copy
       return cloudDoc.get({source:'server'}).then(sn=>{let p=false;try{p=!!localStorage.getItem(PKEY)}catch(e){}
-        const d=sn.data();if(!p&&d&&d.s){LAST_CLOUD=d.s;applyRemote(d.s)}}).catch(()=>{});
+        const d=sn.data();if(!p&&d&&d.s){LAST_CLOUD=d.s;applyRemote(d.s,d.t)}}).catch(()=>{});
     })
-    .catch(e=>{if(e.code==='permission-denied'){try{localStorage.removeItem(PKEY)}catch(_){}toast('אין לך הרשאה לשמור שינויים')}else toast('השינוי לא נשמר בענן, ננסה שוב')});
+    .catch(e=>{
+      if(e&&e.code==='conflict'){try{localStorage.removeItem(PKEY)}catch(_){}LAST_APPLIED=null;LAST_CLOUD=e.cur.s;applyRemote(e.cur.s,e.cur.t);toast('הסידור עודכן ממכשיר אחר בינתיים. השינוי האחרון שלך לא נשמר, בצע אותו שוב');return}
+      if(e&&e.code==='permission-denied'){try{localStorage.removeItem(PKEY)}catch(_){}toast('אין לך הרשאה לשמור שינויים')}else toast('השינוי לא נשמר בענן, ננסה שוב')});
 }
 // mobile: save right away when the app goes to the background or closes (timers freeze there)
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')flushPush();
   else if(cloudDoc){let p=false;try{p=!!localStorage.getItem(PKEY)}catch(e){}   // back to the app (phones freeze background tabs) → fetch the latest
-    if(p)flushPush();else cloudDoc.get({source:'server'}).then(sn=>{let q=false;try{q=!!localStorage.getItem(PKEY)}catch(e){}const d=sn.data();if(!q&&d&&d.s){LAST_CLOUD=d.s;applyRemote(d.s)}}).catch(()=>{})}});
+    if(p)flushPush();else cloudDoc.get({source:'server'}).then(sn=>{let q=false;try{q=!!localStorage.getItem(PKEY)}catch(e){}const d=sn.data();if(!q&&d&&d.s){LAST_CLOUD=d.s;applyRemote(d.s,d.t)}}).catch(()=>{})}});
 window.addEventListener('pagehide',()=>{flushPush()});
 window.addEventListener('online',()=>{flushPush()});
 function setCloudBadge(on){const b=document.getElementById('cloudBadge');if(b)b.textContent=on?'☁︎':''}
@@ -652,7 +669,7 @@ const COLORS=['#ef4444','#f59e0b','#eab308','#22c55e','#10b981','#06b6d4','#0ea5
 /* ============ week math ============ */
 let cur=startOfWeek(new Date());
 function startOfWeek(d){const x=new Date(d);x.setHours(0,0,0,0);x.setDate(x.getDate()-x.getDay());return x}
-function wkKey(d){return d.toISOString().slice(0,10)}
+function wkKey(d){const x=new Date(d.getFullYear(),d.getMonth(),d.getDate()-1);return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0')}   // = the Saturday before (matches the keys already stored)
 function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x}
 function fmtDM(d){return d.getDate()+'.'+(d.getMonth()+1)}
 function shiftWeek(n){cur=addDays(cur,7*n);renderAll()}
@@ -677,7 +694,7 @@ function go(sc){
   if(sc==='summary')renderSummary();
   if(sc==='settings')renderSettings();
 }
-function toast(msg){const t=el('div','toast',msg);$('#toasts').appendChild(t);setTimeout(()=>{t.style.opacity=0;setTimeout(()=>t.remove(),300)},2200)}
+function toast(msg){const t=el('div','toast');t.textContent=msg;$('#toasts').appendChild(t);setTimeout(()=>{t.style.opacity=0;setTimeout(()=>t.remove(),300)},2200)}
 
 /* ============ sheet ============ */
 function openSheet(html){$('#sheet').innerHTML='<div class="grab"></div>'+html;$('#sheetBg').classList.add('open')}
@@ -792,8 +809,8 @@ function renderEmps(){
   S.emps.forEach(e=>{
     const cnt=countEmpWeek(e.id),hrs=empHoursWeek(e.id);
     const row=el('div','emp');
-    row.innerHTML=`<span class="ava" style="background:${e.color}">${initials(e.name)}</span>
-      <div class="info"><b>${e.name}</b><span>${e.role||'עובד'} · עד ${e.maxWeek||'∞'} משמרות</span></div>
+    row.innerHTML=`<span class="ava" style="background:${esc(e.color)}">${esc(initials(e.name))}</span>
+      <div class="info"><b>${esc(e.name)}</b><span>${esc(e.role||'עובד')} · עד ${e.maxWeek||'∞'} משמרות</span></div>
       <div class="stat"><b>${cnt}</b>משמרות</div><div class="stat"><b>${hrs}</b>שעות</div>`;
     row.onclick=()=>openEmp(e.id);
     l.appendChild(row);
@@ -802,12 +819,12 @@ function renderEmps(){
 function openEmp(id){
   const e=id?emp(id):{name:'',role:'',color:COLORS[S.emps.length%COLORS.length],maxWeek:6};
   const html=`<h3>${id?'עריכת עובד':'עובד חדש'}</h3>
-    <div class="field"><label>שם</label><input class="input" id="e_name" value="${e.name}" placeholder="שם מלא"></div>
-    <div class="field"><label>תפקיד</label><input class="input" id="e_role" value="${e.role||''}" placeholder="מלצר / טבח / קופאי…"></div>
+    <div class="field"><label>שם</label><input class="input" id="e_name" value="${esc(e.name)}" placeholder="שם מלא"></div>
+    <div class="field"><label>תפקיד</label><input class="input" id="e_role" value="${esc(e.role||'')}" placeholder="מלצר / טבח / קופאי…"></div>
     <div class="field"><label>מקסימום משמרות בשבוע</label><input class="input" id="e_max" type="number" min="0" max="21" value="${e.maxWeek||6}"></div>
     <div class="field"><label>שעות אישיות (רק אם לעובד הזה יש שעות שונות מהרגיל)</label>
       ${S.stypes.map(st=>{const o=(e.hours||{})[st.id]||{};return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-        <span style="flex:1;font-size:14px">${st.name} <span class="hint">(רגיל ${st.start}–${st.end})</span></span>
+        <span style="flex:1;font-size:14px">${esc(st.name)} <span class="hint">(רגיל ${st.start}–${st.end})</span></span>
         <input class="timeinput eh" data-st="${st.id}" data-k="start" type="time" style="width:96px" value="${o.start||''}">
         <input class="timeinput eh" data-st="${st.id}" data-k="end" type="time" style="width:96px" value="${o.end||''}"></div>`}).join('')}
       <p class="hint" style="margin:2px 0 0">השאר ריק כדי להשתמש בשעות הרגילות.</p></div>
@@ -849,8 +866,8 @@ function renderConstraints(){
     const off=S.constr[k][e.id]||[];
     const card=el('div','sec-card');
     card.innerHTML=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-      <span class="ava" style="width:30px;height:30px;font-size:12px;background:${e.color}">${initials(e.name)}</span>
-      <b>${e.name}</b><span class="hint" style="margin-inline-start:auto">${off.length?off.length+' ימים חסומים':'זמין כל השבוע'}</span></div>`;
+      <span class="ava" style="width:30px;height:30px;font-size:12px;background:${esc(e.color)}">${esc(initials(e.name))}</span>
+      <b>${esc(e.name)}</b><span class="hint" style="margin-inline-start:auto">${off.length?off.length+' ימים חסומים':'זמין כל השבוע'}</span></div>`;
     const grid=el('div','cweek');
     for(let d=0;d<7;d++){
       const isOff=off.includes(d);
@@ -884,14 +901,14 @@ function renderSummary(){
   S.emps.forEach(e=>{
     const p=per[e.id];
     const r=el('div','hoursrow');
-    r.innerHTML=`<span class="ava" style="width:32px;height:32px;font-size:13px;background:${e.color}">${initials(e.name)}</span>
-      <div style="min-width:70px"><b>${e.name}</b><div class="hint">${p.s} משמרות</div></div>
+    r.innerHTML=`<span class="ava" style="width:32px;height:32px;font-size:13px;background:${esc(e.color)}">${esc(initials(e.name))}</span>
+      <div style="min-width:70px"><b>${esc(e.name)}</b><div class="hint">${p.s} משמרות</div></div>
       <div class="barwrap"><div class="track"><div class="fill" style="width:${p.h/maxH*100}%;background:${e.color}"></div></div></div>
       <div class="hv">${Math.round(p.h)} ש׳</div>`;
     hl.appendChild(r);
   });
   const gc=$('#gapsCard'),gl=$('#gapsList');
-  if(gaps.length){gc.style.display='';gl.innerHTML=gaps.map(g=>`<div class="hoursrow" style="gap:8px"><span class="need" style="align-self:center">חסר ${g.miss}</span><div style="flex:1"><b>${DAYS[g.d]}</b> · ${g.st.name} <span class="hint">(${g.st.start}–${g.st.end})</span></div></div>`).join('')}
+  if(gaps.length){gc.style.display='';gl.innerHTML=gaps.map(g=>`<div class="hoursrow" style="gap:8px"><span class="need" style="align-self:center">חסר ${g.miss}</span><div style="flex:1"><b>${DAYS[g.d]}</b> · ${esc(g.st.name)} <span class="hint">(${g.st.start}–${g.st.end})</span></div></div>`).join('')}
   else gc.style.display='none';
 }
 /* monthly roster → Excel, same layout as the paper roster: employees × days, cells = ב / צ / ל / ב+ */
@@ -941,9 +958,9 @@ function renderSettings(){
   S.stypes.forEach(st=>{
     const row=el('div','stype');
     row.innerHTML=`<span class="sw" style="background:${st.color}"></span>
-      <input class="input" style="flex:1;padding:8px 10px" value="${st.name}" onchange="updStype('${st.id}','name',this.value)">
-      <input class="timeinput" value="${st.start}" onchange="updStype('${st.id}','start',this.value)">
-      <input class="timeinput" value="${st.end}" onchange="updStype('${st.id}','end',this.value)">
+      <input class="input" style="flex:1;padding:8px 10px" value="${esc(st.name)}" onchange="updStype('${st.id}','name',this.value)">
+      <input class="timeinput" type="time" value="${esc(st.start)}" onchange="updStype('${st.id}','start',this.value)">
+      <input class="timeinput" type="time" value="${esc(st.end)}" onchange="updStype('${st.id}','end',this.value)">
       <input class="timeinput" style="width:46px" type="number" min="0" max="20" title="מינימום עובדים (ריק = ברירת המחדל)" placeholder="${S.minCov||0}" value="${st.min!=null?st.min:''}" onchange="updStype('${st.id}','min',this.value===''?null:Math.max(0,+this.value||0))">
       <button class="iconbtn" style="width:32px;height:32px" onclick="delStype('${st.id}')">🗑</button>`;
     l.appendChild(row);
@@ -952,7 +969,7 @@ function renderSettings(){
 function showBiz(){$('#brandName').textContent=S.biz;$('#brandDot').textContent=(S.biz||'ס').trim()[0]||'ס'}
 function setBiz(v){S.biz=v||'הסידור שלי';showBiz();save()}
 function setMinCov(v){S.minCov=Math.max(0,+v||0);save();renderBoard()}
-function updStype(id,f,v){const st=S.stypes.find(s=>s.id===id);if(st){st[f]=v;save();renderBoard()}}
+function updStype(id,f,v){if((f==='start'||f==='end')&&!/^\d{2}:\d{2}$/.test(v)){toast('שעה לא תקינה');renderSettings();return}const st=S.stypes.find(s=>s.id===id);if(st){st[f]=v;save();renderBoard()}}
 function delStype(id){if(S.stypes.length<=1){toast('חייב סוג משמרת אחד לפחות');return}S.stypes=S.stypes.filter(s=>s.id!==id);Object.values(S.sched).forEach(w=>Object.keys(w).forEach(dk=>{if(dk[0]==='d')delete w[dk][id]}));save();renderSettings();renderBoard()}
 function addShiftType(){S.stypes.push({id:uid(),name:'משמרת',start:'09:00',end:'17:00',color:COLORS[S.stypes.length%COLORS.length]});save();renderSettings();renderBoard()}
 
@@ -970,7 +987,7 @@ function wipeAll(){openSheet(`<h3>לנקות מהמכשיר הזה?</h3><p class
 
 /* ============ theme ============ */
 function applyTheme(){const t=S.theme;document.documentElement.setAttribute('data-theme',t==='auto'?'':t);$('#themeBtn').textContent=t==='dark'?'☀':t==='light'?'☾':'◐'}
-$('#themeBtn').onclick=()=>{S.theme=S.theme==='auto'?'light':S.theme==='light'?'dark':'auto';save();applyTheme();toast(S.theme==='auto'?'אוטומטי':S.theme==='dark'?'כהה':'בהיר')};
+$('#themeBtn').onclick=()=>{S.theme=S.theme==='auto'?'light':S.theme==='light'?'dark':'auto';try{localStorage.setItem(THEME_KEY,S.theme)}catch(e){}applyTheme();toast(S.theme==='auto'?'אוטומטי':S.theme==='dark'?'כהה':'בהיר')};
 
 /* ============ boot ============ */
 function renderAll(){renderBoard();
@@ -1010,7 +1027,7 @@ function renderMine(){
   const box=$('#mineBody');if(!box)return;
   const e=MINE_PREVIEW?emp(MINE_PREVIEW):myEmp();
   if(!e){box.innerHTML='<div class="empty"><div class="ic">🙋</div>לא מצאתי עובד בשם שלך ברשימת העובדים.<br>פנה למנהל.</div>';return}
-  const now=new Date(),from=new Date(now.getFullYear(),now.getMonth(),1),to=new Date(now.getFullYear(),now.getMonth()+2,0);
+  const now=new Date(),from=addDays(new Date(now.getFullYear(),now.getMonth(),1),-1),to=new Date(now.getFullYear(),now.getMonth()+2,0);
   const list=[];
   for(let dt=new Date(from);dt<=to;dt=addDays(dt,1)){   // walk real dates, look each up the same way the board does
     const w=S.sched[wkKey(startOfWeek(dt))];if(!w)continue;const dd=w['d'+dt.getDay()]||{};
