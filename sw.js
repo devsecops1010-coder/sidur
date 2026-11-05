@@ -1,5 +1,5 @@
 // סידור — offline service worker
-const CACHE = 'sidur-v17';
+const CACHE = 'sidur-v18';
 const ASSETS = ['./', './index.html', './manifest.json', './icon.png'];
 // versioned third-party libraries (Firebase, SheetJS, QR) — safe to serve from cache, lets the app open offline
 const LIB = /^https:\/\/(www\.gstatic\.com\/firebasejs\/|cdn\.jsdelivr\.net\/npm\/xlsx@|cdnjs\.cloudflare\.com\/ajax\/libs\/qrcodejs\/)/;

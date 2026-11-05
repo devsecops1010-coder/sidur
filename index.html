@@ -563,7 +563,10 @@ async function createOwner(){$('#gateErr').textContent='';const n=$('#sName').va
   if(p!==$('#sPass2').value){$('#gateErr').textContent='הסיסמאות לא זהות';return}
   try{await firebase.auth().createUserWithEmailAndPassword(name2email(n),p)}catch(x){gateErr(x.code==='auth/email-already-in-use'?{code:'name-taken'}:x)}}
 function gateErr(e){const m={'name-bad':'שם משתמש או סיסמה שגויים','name-taken':'השם הזה כבר תפוס, בחר שם אחר','auth/invalid-credential':'מייל או סיסמה שגויים','auth/wrong-password':'סיסמה שגויה','auth/user-not-found':'אין משתמש עם המייל הזה','auth/email-already-in-use':'המייל כבר רשום, לחץ "כניסה"','auth/weak-password':'סיסמה קצרה מדי (6 תווים לפחות)','auth/invalid-email':'כתובת מייל לא תקינה','auth/missing-password':'צריך סיסמה','auth/popup-closed-by-user':'החלון נסגר לפני שהכניסה הסתיימה','auth/operation-not-allowed':'שיטת הכניסה הזו עוד לא הופעלה','auth/unauthorized-domain':'הכתובת עוד לא מאושרת ב-Firebase','auth/network-request-failed':'אין חיבור לאינטרנט','auth/too-many-requests':'יותר מדי ניסיונות, נסה שוב בעוד כמה דקות'};$('#gateErr').textContent=m[e&&e.code]||('שגיאה: '+((e&&(e.code||e.message))||''))}
-async function loginGoogle(){$('#gateErr').textContent='';const p=new firebase.auth.GoogleAuthProvider();p.setCustomParameters({prompt:'select_account'});
+/* Google sign-in works only on Firebase-authorized domains (github.io). On link3.co.il the button opens the same app on
+   github.io, where ?glogin=1 starts the Google sign-in right away. */
+const LINK3=['link3.co.il','www.link3.co.il'].includes(location.hostname);
+async function loginGoogle(){if(LINK3){location.href='https://devsecops1010-coder.github.io'+location.pathname+'?glogin=1'+location.hash;return}$('#gateErr').textContent='';const p=new firebase.auth.GoogleAuthProvider();p.setCustomParameters({prompt:'select_account'});
   try{await firebase.auth().signInWithPopup(p)}catch(e){
     if(e.code==='auth/popup-blocked'||e.code==='auth/operation-not-supported-in-this-environment'){try{await firebase.auth().signInWithRedirect(p)}catch(e2){gateErr(e2)}}else gateErr(e)}}
 /* username login: Firebase needs an email, so each name maps to a private internal address
@@ -1084,7 +1087,9 @@ function renderInstall(){
 }
 function boot(){
   showBiz();applyTheme();renderBoard();renderInstall();
-  if(fbInit()){firebase.auth().getRedirectResult().catch(gateErr);firebase.auth().onAuthStateChanged(onUser)}
+  if(fbInit()){firebase.auth().getRedirectResult().catch(gateErr);firebase.auth().onAuthStateChanged(onUser)
+    if(!LINK3&&new URLSearchParams(location.search).get('glogin')==='1'){history.replaceState(null,'',location.pathname+location.hash);
+      const off=firebase.auth().onAuthStateChanged(u=>{off();if(!u){const p=new firebase.auth.GoogleAuthProvider();p.setCustomParameters({prompt:'select_account'});firebase.auth().signInWithRedirect(p).catch(gateErr)}})}}
   else $('#gateErr').textContent='לא הצלחתי לטעון את מערכת הכניסה. בדוק חיבור לאינטרנט ורענן.';
   if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 }
