@@ -494,24 +494,20 @@ function initCloud(){
   if(unsub){unsub();unsub=null}
   firstSnap=true;
   cloudDoc=firebase.firestore().collection('sidur').doc('main');
+  /* Sync rules (no device clocks involved — phones and PCs often disagree by minutes):
+     - our own write echoing back (hasPendingWrites) is ignored;
+     - while this device has an un-acknowledged change, it is not overwritten; after the server acks, we re-read the server copy;
+     - anything else from the cloud is applied, and applying NEVER triggers a save (that caused device ping-pong). */
   unsub=cloudDoc.onSnapshot(snap=>{
     hideGate();setCloudBadge(true);
+    if(snap.metadata.hasPendingWrites)return;
     const d=snap.data();if(!d||!d.s){firstSnap=false;return}
     LAST_CLOUD=d.s;
-    if(firstSnap&&CAN_EDIT&&(S._t||0)>(d.t||0)){  // this device has a newer, never-sent change → send it, don't overwrite it
-      let pending=false;try{pending=!!localStorage.getItem(PKEY)}catch(e){}
-      if(pending){firstSnap=false;renderAll();flushPush();return}
-    }
-    if(!firstSnap&&(d.t||0)<=(S._t||0))return;   // own echo / older; first load otherwise takes the cloud
+    let pending=false;try{pending=!!localStorage.getItem(PKEY)}catch(e){}
+    if(pending&&CAN_EDIT){              // a local change that the server hasn't confirmed yet → send it, keep it on screen
+      const wasFirst=firstSnap;firstSnap=false;if(wasFirst)renderAll();flushPush();return}
     firstSnap=false;
-    try{
-      const remote=JSON.parse(d.s),theme=S.theme;   // keep this device's theme
-      applyingRemote=true;S=remote;S.theme=theme;
-      try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}
-      applyingRemote=false;
-      applyTheme();setBiz(S.biz);renderAll();
-      migrate();
-    }catch(e){applyingRemote=false}
+    applyRemote(d.s);
   },err=>{
     setCloudBadge(false);
     if(err.code==='permission-denied'){
@@ -520,6 +516,18 @@ function initCloud(){
       showWait(`אין לך עדיין גישה לסידור.<br>פנה למנהל.<br><b>${displayName()}</b>`);
     } else toast('אין חיבור לענן כרגע');
   });
+}
+let LAST_APPLIED=null;
+function applyRemote(str){
+  if(!str||str===LAST_APPLIED)return;LAST_APPLIED=str;
+  try{
+    const remote=JSON.parse(str),theme=S.theme;   // keep this device's theme
+    applyingRemote=true;S=remote;S.theme=theme;
+    try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}
+    applyingRemote=false;
+    applyTheme();showBiz();renderAll();
+    migrate();
+  }catch(e){applyingRemote=false}
 }
 /* one-time schema upgrades, done by an editor right after the cloud copy is loaded */
 function migrate(){
@@ -612,19 +620,27 @@ function pushCloud(){
   if(!cloudDoc||!CAN_EDIT)return;
   try{localStorage.setItem(PKEY,'1')}catch(e){}
   clearTimeout(pushTimer);
-  pushTimer=setTimeout(flushPush,400);
+  pushTimer=setTimeout(flushPush,150);
 }
 function flushPush(){
   clearTimeout(pushTimer);
   if(!cloudDoc||!CAN_EDIT)return Promise.resolve();
   let pending=false;try{pending=!!localStorage.getItem(PKEY)}catch(e){}
   if(!pending)return Promise.resolve();
-  const t=S._t;
-  return cloudDoc.set({s:JSON.stringify(S),t}).then(()=>{if(S._t===t)try{localStorage.removeItem(PKEY)}catch(e){}})
-    .catch(e=>toast(e.code==='permission-denied'?'אין לך הרשאה לשמור שינויים':'השינוי לא נשמר בענן, ננסה שוב'));
+  const t=S._t,str=JSON.stringify(S);LAST_APPLIED=str;
+  return cloudDoc.set({s:str,t}).then(()=>{
+      if(S._t!==t)return;                       // newer local change already on its way
+      try{localStorage.removeItem(PKEY)}catch(e){}
+      // someone else may have written while ours was in flight → take the server's final copy
+      return cloudDoc.get({source:'server'}).then(sn=>{let p=false;try{p=!!localStorage.getItem(PKEY)}catch(e){}
+        const d=sn.data();if(!p&&d&&d.s){LAST_CLOUD=d.s;applyRemote(d.s)}}).catch(()=>{});
+    })
+    .catch(e=>{if(e.code==='permission-denied'){try{localStorage.removeItem(PKEY)}catch(_){}toast('אין לך הרשאה לשמור שינויים')}else toast('השינוי לא נשמר בענן, ננסה שוב')});
 }
 // mobile: save right away when the app goes to the background or closes (timers freeze there)
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')flushPush()});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')flushPush();
+  else if(cloudDoc){let p=false;try{p=!!localStorage.getItem(PKEY)}catch(e){}   // back to the app (phones freeze background tabs) → fetch the latest
+    if(p)flushPush();else cloudDoc.get({source:'server'}).then(sn=>{let q=false;try{q=!!localStorage.getItem(PKEY)}catch(e){}const d=sn.data();if(!q&&d&&d.s){LAST_CLOUD=d.s;applyRemote(d.s)}}).catch(()=>{})}});
 window.addEventListener('pagehide',()=>{flushPush()});
 window.addEventListener('online',()=>{flushPush()});
 function setCloudBadge(on){const b=document.getElementById('cloudBadge');if(b)b.textContent=on?'☁︎':''}
@@ -933,7 +949,8 @@ function renderSettings(){
     l.appendChild(row);
   });
 }
-function setBiz(v){S.biz=v||'הסידור שלי';$('#brandName').textContent=S.biz;$('#brandDot').textContent=S.biz.trim()[0]||'ס';save()}
+function showBiz(){$('#brandName').textContent=S.biz;$('#brandDot').textContent=(S.biz||'ס').trim()[0]||'ס'}
+function setBiz(v){S.biz=v||'הסידור שלי';showBiz();save()}
 function setMinCov(v){S.minCov=Math.max(0,+v||0);save();renderBoard()}
 function updStype(id,f,v){const st=S.stypes.find(s=>s.id===id);if(st){st[f]=v;save();renderBoard()}}
 function delStype(id){if(S.stypes.length<=1){toast('חייב סוג משמרת אחד לפחות');return}S.stypes=S.stypes.filter(s=>s.id!==id);Object.values(S.sched).forEach(w=>Object.keys(w).forEach(dk=>{if(dk[0]==='d')delete w[dk][id]}));save();renderSettings();renderBoard()}
@@ -1049,7 +1066,7 @@ function renderInstall(){
   if(c)c.innerHTML=isStandalone()?'✓ סידור מותקן במסך הבית של המכשיר הזה.':(h?h.text+(h.btn?'<div style="margin-top:8px"><button class="btn sm" onclick="doInstall()">'+h.btn+'</button></div>':''):'');
 }
 function boot(){
-  setBiz(S.biz);applyTheme();renderBoard();renderInstall();
+  showBiz();applyTheme();renderBoard();renderInstall();
   if(fbInit()){firebase.auth().getRedirectResult().catch(gateErr);firebase.auth().onAuthStateChanged(onUser)}
   else $('#gateErr').textContent='לא הצלחתי לטעון את מערכת הכניסה. בדוק חיבור לאינטרנט ורענן.';
   if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
